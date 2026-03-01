@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #F4F6FA;
+  color: #1A202C;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F4F6FA;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E0;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A0AEC0;
+}
+
+/* Animations */
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes pulse-active {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeInUp 0.3s ease forwards;
+}
+
+.pulse-active {
+  animation: pulse-active 2s infinite;
+}
+
+/* React Flow light overrides */
+.react-flow {
+  background: #F8FAFC;
+}
+
+.react-flow__minimap {
+  background: #F0F4F8 !important;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+}
+
+.react-flow__controls {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+.react-flow__controls-button {
+  background: #FFFFFF !important;
+  border-bottom-color: #E2E8F0 !important;
+  color: #64748B !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #F8FAFC !important;
+}
+
+.react-flow__edge-path {
+  stroke: #CBD5E0;
+}

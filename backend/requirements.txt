@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+pydantic-settings
+sqlalchemy
+aiosqlite
+alembic
+langchain
+langchain-openai
+langgraph
+mcp
+apscheduler
+python-dotenv
+structlog
+langgraph-checkpoint-sqlite
+pytest
+httpx
