@@ -3,6 +3,19 @@ import { XCircle, Plus, Database } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getRepos, createRepo, deleteRepo, toggleRepo } from '../services/api';
 
+const Field = ({ label, placeholder, type = 'text', value, onChange }) => (
+    <Box>
+        <Text fontSize="xs" color="#64748B" mb={1}>{label}</Text>
+        <input type={type} placeholder={placeholder} value={value}
+            onChange={onChange}
+            style={{
+                width: '100%', background: '#F8FAFC', border: '1px solid #E2E8F0',
+                color: '#1A202C', borderRadius: '7px', padding: '8px 12px',
+                fontSize: '13px', outline: 'none', fontFamily: 'inherit'
+            }} />
+    </Box>
+);
+
 function AddRepoModal({ isOpen, onClose, onSave }) {
     const [form, setForm] = useState({ owner: '', name: '', jiraProjectKey: '', slackChannel: '', schedule: '0 */6 * * *' });
     const [saving, setSaving] = useState(false);
@@ -16,19 +29,6 @@ function AddRepoModal({ isOpen, onClose, onSave }) {
         onClose();
     };
 
-    const Field = ({ label, field, placeholder, type = 'text' }) => (
-        <Box>
-            <Text fontSize="xs" color="#64748B" mb={1}>{label}</Text>
-            <input type={type} placeholder={placeholder} value={form[field]}
-                onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
-                style={{
-                    width: '100%', background: '#F8FAFC', border: '1px solid #E2E8F0',
-                    color: '#1A202C', borderRadius: '7px', padding: '8px 12px',
-                    fontSize: '13px', outline: 'none', fontFamily: 'inherit'
-                }} />
-        </Box>
-    );
-
     return (
         <Box position="fixed" inset={0} zIndex={50} display="flex" alignItems="center" justifyContent="center">
             <Box position="absolute" inset={0} bg="rgba(0,0,0,0.3)" onClick={onClose} />
@@ -37,10 +37,10 @@ function AddRepoModal({ isOpen, onClose, onSave }) {
                 boxShadow="0 20px 60px rgba(0,0,0,0.15)">
                 <Text fontWeight="700" color="#1A202C" fontSize="md" mb={5}>Add Repository</Text>
                 <VStack gap={3} align="stretch" mb={5}>
-                    <Field label="GitHub Owner" field="owner" placeholder="acme-corp" />
-                    <Field label="Repository Name" field="name" placeholder="backend-api" />
-                    <Field label="Jira Project Key" field="jiraProjectKey" placeholder="BACK" />
-                    <Field label="Slack Channel" field="slackChannel" placeholder="#eng-prs" />
+                    <Field label="GitHub Owner" value={form.owner} onChange={(e) => setForm({ ...form, owner: e.target.value })} placeholder="acme-corp" />
+                    <Field label="Repository Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="backend-api" />
+                    <Field label="Jira Project Key" value={form.jiraProjectKey} onChange={(e) => setForm({ ...form, jiraProjectKey: e.target.value })} placeholder="BACK" />
+                    <Field label="Slack Channel" value={form.slackChannel} onChange={(e) => setForm({ ...form, slackChannel: e.target.value })} placeholder="#eng-prs" />
                     <Box>
                         <Text fontSize="xs" color="#64748B" mb={1}>Check Schedule</Text>
                         <select value={form.schedule} onChange={(e) => setForm((f) => ({ ...f, schedule: e.target.value }))}

@@ -66,6 +66,8 @@ async def fetch_github_prs(state: AgentState) -> dict:
                 
                 additions = 0
                 deletions = 0
+                mergeable = None
+                mergeable_state = None
                 
                 detail_url = pr_raw.get("url")
                 if detail_url:
@@ -74,6 +76,8 @@ async def fetch_github_prs(state: AgentState) -> dict:
                         detail_data = detail_resp.json()
                         additions = detail_data.get("additions", 0)
                         deletions = detail_data.get("deletions", 0)
+                        mergeable = detail_data.get("mergeable")
+                        mergeable_state = detail_data.get("mergeable_state")
                 
                 user_login = pr_raw.get("user", {}).get("login", "unknown")
                 labels = [label["name"] for label in pr_raw.get("labels", [])]
@@ -85,6 +89,8 @@ async def fetch_github_prs(state: AgentState) -> dict:
                     "inactivity_days": max(inactivity_days, 0),
                     "additions": additions,
                     "deletions": deletions,
+                    "mergeable": mergeable,
+                    "mergeable_state": mergeable_state,
                     "labels": labels
                 })
                 
@@ -162,6 +168,8 @@ async def evaluate_current_pr(state: AgentState) -> dict:
             "inactivity_days": pr.get("inactivity_days", 0),
             "additions": pr.get("additions", 0),
             "deletions": pr.get("deletions", 0),
+            "mergeable": pr.get("mergeable"),
+            "mergeable_state": pr.get("mergeable_state"),
             "decision": final_decision.decision,
             "escalation_level": final_decision.escalation_level,
         }

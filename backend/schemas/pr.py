@@ -10,6 +10,8 @@ class PRRecordBase(BaseModel):
     inactivity_days: int
     additions: int
     deletions: int
+    mergeable: Optional[bool] = None
+    mergeable_state: Optional[str] = None
     decision: str
     escalation_level: int
     jira_id: Optional[str] = None
