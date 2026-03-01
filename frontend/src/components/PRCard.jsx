@@ -1,5 +1,5 @@
 import { Box, Flex, HStack, VStack, Text, Icon, Separator, Spinner } from '@chakra-ui/react';
-import { GitPullRequest, Clock, AlertTriangle, GitMerge, MessageSquare, CheckCircle } from 'lucide-react';
+import { GitPullRequest, Clock, AlertTriangle, GitMerge, MessageSquare, CheckCircle, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatusBadge from './StatusBadge';
@@ -90,6 +90,19 @@ export default function PRCard({ pr, onRefresh }) {
                         <Text fontSize="xs" color="#065F46" fontWeight="600">+{pr.additions}</Text>
                         <Text fontSize="xs" color="#991B1B" fontWeight="600">-{pr.deletions}</Text>
                     </HStack>
+
+                    {pr.mergeableState && (
+                        <>
+                            <Text color="#E2E8F0">|</Text>
+                            <HStack gap={1}
+                                color={pr.mergeableState === 'clean' ? '#059669' : pr.mergeableState === 'dirty' ? '#DC2626' : '#64748B'}
+                                bg={pr.mergeableState === 'clean' ? '#D1FAE5' : pr.mergeableState === 'dirty' ? '#FEE2E2' : '#F1F5F9'}
+                                px="6px" py="2px" borderRadius="4px">
+                                {pr.mergeableState === 'clean' ? <CheckCircle size={10} /> : pr.mergeableState === 'dirty' ? <XCircle size={10} /> : <div />}
+                                <Text fontSize="10px" fontWeight="700" textTransform="uppercase">{pr.mergeableState}</Text>
+                            </HStack>
+                        </>
+                    )}
                     {pr.escalationLevel > 0 && (
                         <HStack gap={1} color="#92400E">
                             <Icon as={AlertTriangle} boxSize={3.5} />

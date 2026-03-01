@@ -23,6 +23,8 @@ class PRRecord(Base):
     inactivity_days = Column(Integer, default=0)
     additions = Column(Integer, default=0)
     deletions = Column(Integer, default=0)
+    mergeable = Column(Boolean, nullable=True)
+    mergeable_state = Column(String, nullable=True)
     
     # AI / Jira state
     decision = Column(String, default="PENDING") # ASK_TO_MERGE, PING_REVIEWER, ESCALATE, IGNORE

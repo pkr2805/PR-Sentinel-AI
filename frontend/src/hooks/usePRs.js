@@ -14,7 +14,9 @@ export function usePRs(repoId = null) {
             const normalizedData = data.map(pr => ({
                 ...pr,
                 inactivityDays: pr.inactivity_days,
-                escalationLevel: pr.escalation_level
+                escalationLevel: pr.escalation_level,
+                mergeable: pr.mergeable,
+                mergeableState: pr.mergeable_state
             }));
             setPRs(normalizedData);
         } catch (err) {
