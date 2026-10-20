@@ -45,7 +45,7 @@ evidence links.
 
 ## Phases
 
-### Phase 0 — Foundations ✅ in progress (branch `feature/groq-phase-0`)
+### Phase 0 — Foundations ✅ (merged in #2)
 
 - [x] Switch the LLM from Gemini to Groq (`openai/gpt-oss-120b`) behind a provider factory (`core/llm.py`).
 - [x] Fix dependencies (`langchain-groq` instead of the missing Gemini package); pin versions.
@@ -58,31 +58,37 @@ evidence links.
 - [x] Add the missing `PUT /api/repos/{id}` endpoint the frontend calls.
 - [x] `.env.example`, a real README, tests that run without network access.
 - [x] CI workflow: backend tests, frontend build (lint runs but is non-blocking).
-- [ ] Fix the 21 pre-existing frontend lint errors (`react-hooks/static-components`, `set-state-in-effect`),
-      then make lint blocking in CI.
+- [x] Fix the 21 pre-existing frontend lint errors and make lint blocking in CI (done with the UI redesign).
 - [ ] Verify a live run against Groq and a real repository.
 
 **Done when:** a fresh clone starts with the README steps alone and CI is green.
 
-### Phase 1 — Blocker detection engine (1–2 weeks)
+### Phase 1 — Blocker detection engine ✅ (branch `feature/agent-flow-v2`)
 
-- [ ] `sentinel/` core package, independent of FastAPI.
-- [ ] Collector: one GitHub GraphQL query per PR (reviews, review threads, commits since review, checks,
-      mergeability, requested reviewers). Replaces the REST call per PR.
-- [ ] Rule classifier for the certain states.
-- [ ] LLM judge only for `FEEDBACK_ADDRESSED` and `DISCUSSION_STALLED`, with strict structured output.
-- [ ] Message writer: short, neutral summary with evidence links.
-- [ ] Cache: skip the LLM when the head commit and comments haven't changed.
+- [x] `backend/sentinel/` core package, independent of FastAPI and the database.
+- [x] Collector: one GitHub GraphQL query for all open PRs (reviews, review threads, last commit + CI,
+      mergeability, requested reviewers, comments).
+- [x] Rule classifier for the certain states.
+- [x] LLM judge only for `FEEDBACK_ADDRESSED` and `DISCUSSION_STALLED`, structured output, optional MCP tools
+      (started lazily, once per run, only if an ambiguous PR needs them). The diff is never sent.
+- [x] Parallel fan-out per PR (LangGraph `Send`) with a concurrency limit.
+- [x] Cache: unchanged PRs (same head commit, CI, reviews, comments) reuse the last assessment, no LLM call.
+- [x] Fallbacks: LLM failure or no API key → rule result with lower confidence; one PR's error doesn't stop the run.
+- [x] CLI: `python -m sentinel scan owner/repo [--no-llm] [--apply]`.
 - [ ] Accuracy set: ~30 real public PRs labelled by hand + a scoring script (target ≥ 90%).
-- [ ] CLI: `sentinel scan owner/repo --dry-run`.
+- [ ] Verify the GraphQL query and a full run against real repositories and Groq.
 
-### Phase 2 — Taking action (1 week)
+### Phase 2 — Taking action ✅ (branch `feature/agent-flow-v2`)
 
-- [ ] Single sticky PR comment (hidden marker, edited in place).
-- [ ] Labels: `sentinel:waiting-on-author`, `sentinel:waiting-on-review`, `sentinel:ready-to-merge`.
-- [ ] Daily Slack digest grouped by person.
-- [ ] Anti-spam: reminder interval, quiet hours, ignore list, skip bot PRs.
-- [ ] Config file: `.github/pr-sentinel.yml`.
+- [x] Decide/act separation: the planner produces actions, the executor is the only code with side effects.
+- [x] Single sticky PR comment (hidden marker, edited in place, not rewritten when unchanged).
+- [x] Labels: `sentinel:waiting-on-author`, `sentinel:waiting-on-review`, `sentinel:ready-to-merge`.
+- [x] Slack digest grouped by person (bot token or webhook); escalations in a separate message.
+- [x] Memory between runs: notify only on a new state or after the reminder interval; quiet hours; dry-run default.
+- [x] Approval gate: escalations are stored as pending actions; approve/reject via API and dashboard panel.
+- [x] GitHub webhook endpoint (HMAC-verified) triggers a scan on PR, review, CI and comment events.
+- [x] Run metrics: duration, PRs seen, cache hits, LLM calls, actions taken.
+- [ ] Per-repo config file `.github/pr-sentinel.yml` (settings are global for now).
 
 ### Phase 3 — GitHub Action (3–4 days)
 
@@ -94,7 +100,9 @@ evidence links.
 
 - [ ] Move to FastAPI lifespan handlers and Alembic migrations instead of `create_all`.
 
-- [ ] Replace the mock activity chart with real data (time waiting per state).
+- [x] UI redesign: design tokens (dark + light), real data only (mock chart removed), "who acts next" breakdown,
+      command palette (⌘K), global repo filter, approvals panel, animations with reduced-motion support.
+- [ ] Trend charts over time (needs a history of states per run).
 - [ ] "Who's the bottleneck" view.
 - [ ] PR detail shows the evidence behind each decision.
 - [ ] Manual overrides feed the accuracy set.

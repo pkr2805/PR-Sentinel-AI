@@ -8,7 +8,7 @@ const api = axios.create({
 
 api.interceptors.response.use(
     (res) => res.data,
-    (err) => Promise.reject(new Error(err.response?.data?.detail || err.message))
+    (err) => Promise.reject(new Error(err.response?.data?.detail || err.response?.data?.message || err.message))
 );
 
 // ─── Repos ────────────────────────────────────────────────────────────────────
@@ -40,8 +40,16 @@ export const createRepo = async (data) => {
     };
 };
 
+const normalizeRepo = (repo) => ({
+    ...repo,
+    fullName: `${repo.owner}/${repo.name}`,
+    jiraProjectKey: repo.jira_project_key,
+    slackChannel: repo.slack_channel,
+    openPRs: repo.open_prs,
+});
+
 export const updateRepo = async (id, data) => {
-    return await api.put(`/repos/${id}`, data);
+    return normalizeRepo(await api.put(`/repos/${id}`, data));
 };
 
 export const deleteRepo = async (id) => {
@@ -58,6 +66,10 @@ const normalizePR = (pr) => ({
     repoName: pr.repo_id,
     inactivityDays: pr.inactivity_days,
     escalationLevel: pr.escalation_level,
+    waitingOn: pr.waiting_on,
+    nextStep: pr.next_step,
+    people: pr.people || [],
+    lastNotifiedAt: pr.last_notified_at,
 });
 
 export const getPRs = async (repoId = null) => {
@@ -90,4 +102,17 @@ export const getLogs = async (repoId = null, prId = null) => {
 
 export const getStats = async (repoId = null) => {
     return await api.get('/stats', { params: repoId ? { repo_id: repoId } : {} });
+};
+
+// ─── Approvals ────────────────────────────────────────────────────────────────
+export const getPendingActions = async (repoId = null) => {
+    return await api.get('/actions', { params: repoId ? { repo_id: repoId } : {} });
+};
+
+export const approvePendingAction = async (id) => {
+    return await api.post(`/actions/${id}/approve`);
+};
+
+export const rejectPendingAction = async (id) => {
+    return await api.post(`/actions/${id}/reject`);
 };

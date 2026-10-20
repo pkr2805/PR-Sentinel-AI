@@ -51,6 +51,22 @@ def build_args_schema(tool_name: str, input_schema: dict):
     return create_model(f"{tool_name}Schema", **fields)
 
 
+_READ_VERBS = {"get", "list", "search", "read", "fetch", "lookup", "find", "query", "describe", "show"}
+_CODE_WORDS = {"file", "files", "diff", "patch", "contents", "blob", "tree"}
+
+
+def is_read_only_tool(name: str) -> bool:
+    """The LLM judge may only read, and never sees code: deciding is separate from acting.
+
+    Accepts e.g. `get_pull_request_reviews`, `jira_get_issue`; rejects `merge_pull_request`, `create_issue`,
+    `slack_post_message` and `get_pull_request_files`.
+    """
+    words = name.lower().replace("-", "_").split("_")
+    if _CODE_WORDS & set(words):
+        return False
+    return bool(words) and (words[0] in _READ_VERBS or (len(words) > 1 and words[1] in _READ_VERBS))
+
+
 def _make_executor(session: ClientSession, tool_name: str):
     async def mcp_executor(**kwargs):
         arguments = {k: v for k, v in kwargs.items() if v is not None}
@@ -90,7 +106,8 @@ class MCPToolManager:
     Use as an async context manager so the servers are started once per agent run and always cleaned up.
     """
 
-    def __init__(self):
+    def __init__(self, include_slack: bool = True):
+        self.include_slack = include_slack
         self.stack = AsyncExitStack()
         self.sessions: List[ClientSession] = []
         self.langchain_tools: List[Any] = []
@@ -109,7 +126,7 @@ class MCPToolManager:
                 "@modelcontextprotocol/server-github",
                 {"GITHUB_PERSONAL_ACCESS_TOKEN": settings.github_token},
             )))
-        if settings.slack_bot_token:
+        if settings.slack_bot_token and self.include_slack:
             servers.append(("slack", _server_params(
                 "@modelcontextprotocol/server-slack",
                 {"SLACK_BOT_TOKEN": settings.slack_bot_token, "SLACK_TEAM_ID": settings.slack_team_id or ""},
@@ -142,6 +159,10 @@ class MCPToolManager:
                 logger.info("mcp_server_connected", server=name, tools_loaded=len(tools))
             except Exception as e:
                 logger.error("mcp_connection_failed", server=name, error=str(e))
+
+    def get_read_only_tools(self) -> List[Any]:
+        """Tools safe to hand to the LLM judge: read-only, no code."""
+        return [t for t in self.langchain_tools if is_read_only_tool(t.name)]
 
     def get_tools(self) -> List[Any]:
         """Returns the MCP tools plus the Slack webhook fallback when it is configured."""

@@ -1,72 +1,39 @@
-import { Box, Flex, Text, HStack, VStack, Icon, Spinner } from '@chakra-ui/react';
-import { Info } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Zap, GitPullRequest, Filter, ListChecks, Sparkles, ClipboardList, Send, ShieldCheck } from 'lucide-react';
+import PageHeader from '../components/ui/PageHeader';
 import GraphView from '../components/GraphView';
+import { ToneIcon } from '../components/ui/Chip';
+import { stagger, rise } from '../components/ui/motion';
 
-const LEGEND = [
-    { label: 'Trigger', color: '#2b72e8' },
-    { label: 'GitHub/Jira', color: '#0ea5e9' },
-    { label: 'LLM Decision', color: '#60a5fa' },
-    { label: 'Merge', color: '#16a34a' },
-    { label: 'Ping', color: '#ca8a04' },
-    { label: 'Escalate', color: '#dc2626' },
-    { label: 'Ignore', color: '#4b5563' },
-    { label: 'Slack + DB', color: '#9333ea' },
-];
-
-const NODE_DESCS = [
-    { node: 'fetch_prs_node', desc: 'Queries GitHub API for all open PRs. Extracts number, title, author, reviewers, labels, and inactivity since last commit or review.' },
-    { node: 'jira_status_node', desc: 'Extracts Jira ticket ID from PR branch name or description, then queries Jira API for current status.' },
-    { node: 'llm_decision_node', desc: 'Passes full PR context to LLM. Returns one of: ASK_TO_MERGE, PING_REVIEWER, ESCALATE, or IGNORE.' },
-    { node: 'escalation_node', desc: 'Checks reminder count against threshold. If breached, increases escalation_level and routes to manager channel.' },
-    { node: 'slack_node', desc: 'Sends structured Slack digest grouped by decision type, using repo-specific channel config.' },
-    { node: 'persistence_node', desc: 'Writes execution result, decision, escalation level, and Slack message ID to PostgreSQL for audit and dedup.' },
+const STEPS = [
+    { icon: Zap, tone: 'brand', title: 'Trigger', text: 'Every 6 hours, on demand, or within seconds of a GitHub event: a review, a CI result, a push or a comment.' },
+    { icon: GitPullRequest, tone: 'info', title: 'Fetch', text: 'One GitHub GraphQL query reads every open PR with its reviews, threads, CI status, conflicts and requested reviewers.' },
+    { icon: Filter, tone: 'info', title: 'Filter & cache', text: 'Bots and ignored labels are skipped. PRs that have not changed since the last scan reuse their result, with no AI call.' },
+    { icon: ListChecks, tone: 'ready', title: 'Rules first', text: 'Certain states are decided by plain code, in parallel: draft, CI failing, conflict, changes requested, ready to merge.' },
+    { icon: Sparkles, tone: 'brand', title: 'AI only when unsure', text: 'Groq gpt-oss-120b reads the conversation to answer "was the feedback addressed?" and "whose turn is it?". It never sees the code.' },
+    { icon: ClipboardList, tone: 'author', title: 'Plan', text: 'Notifies only when a PR changes state or a reminder is due, respects quiet hours, and holds escalations for your approval.' },
+    { icon: Send, tone: 'review', title: 'Act', text: 'Edits one PR Sentinel comment per PR, sets a sentinel:* label and sends one Slack digest grouped by person.' },
+    { icon: ShieldCheck, tone: 'ready', title: 'Safe by default', text: 'Dry run until you switch it off. The AI only decides; one tested step does all the posting.' },
 ];
 
 export default function Workflow() {
     return (
-        <Box>
-            <Flex justify="space-between" align="center" mb={4}>
-                <Box>
-                    <Text fontSize="xl" fontWeight="800" color="white">Workflow Graph</Text>
-                    <Text fontSize="sm" color="gray.400">LangGraph agent execution flow — interactive</Text>
-                </Box>
-                <HStack gap={2} bg="#161B22" borderWidth="1px" borderColor="#21262D"
-                    borderRadius="8px" px={3} py={2}>
-                    <Icon as={Info} boxSize={3.5} color="blue.400" />
-                    <Text fontSize="xs" color="gray.400">Drag nodes · Scroll to zoom</Text>
-                </HStack>
-            </Flex>
-
-            {/* Legend */}
-            <HStack gap={2} mb={4} flexWrap="wrap">
-                {LEGEND.map((l) => (
-                    <HStack key={l.label} gap={1.5} px={2.5} py={1} borderRadius="6px"
-                        bg="#161B22" borderWidth="1px" borderColor="#21262D">
-                        <Box w={2.5} h={2.5} borderRadius="full" bg={l.color} />
-                        <Text fontSize="10px" color="gray.300" fontWeight="600">{l.label}</Text>
-                    </HStack>
+        <>
+            <PageHeader eyebrow="Under the hood" title="How PR Sentinel works"
+                subtitle="A LangGraph flow that decides with rules first, asks the AI only when it has to, and acts in one place." />
+            <motion.div className="grid grid-4" variants={stagger(0.05)} initial="hidden" animate="show" style={{ marginBottom: 20 }}>
+                {STEPS.map((s, i) => (
+                    <motion.div key={s.title} variants={rise} className="card card-pad col" style={{ gap: 10 }}>
+                        <div className="row" style={{ justifyContent: 'space-between' }}>
+                            <ToneIcon tone={s.tone} icon={s.icon} />
+                            <span className="mono faint" style={{ fontSize: 12 }}>{String(i + 1).padStart(2, '0')}</span>
+                        </div>
+                        <div style={{ fontWeight: 600 }}>{s.title}</div>
+                        <p className="muted" style={{ fontSize: 13, lineHeight: 1.55 }}>{s.text}</p>
+                    </motion.div>
                 ))}
-            </HStack>
-
-            <GraphView height="580px" />
-
-            {/* Node descriptions */}
-            <Box mt={4} bg="#161B22" borderWidth="1px" borderColor="#21262D" borderRadius="12px" p={4}>
-                <Text fontWeight="700" color="white" fontSize="sm" mb={3}>Node Descriptions</Text>
-                <VStack align="stretch" gap={2}>
-                    {NODE_DESCS.map((n) => (
-                        <HStack key={n.node} align="flex-start" gap={3} p={3}
-                            borderRadius="8px" bg="#1C2128">
-                            <Box px={2} py={0.5} borderRadius="5px" bg="rgba(43,114,232,0.2)"
-                                color="#90cdf4" fontSize="10px" fontWeight="700" fontFamily="mono"
-                                flexShrink={0} mt={0.5} whiteSpace="nowrap">
-                                {n.node}
-                            </Box>
-                            <Text fontSize="xs" color="gray.400" lineHeight="1.6">{n.desc}</Text>
-                        </HStack>
-                    ))}
-                </VStack>
-            </Box>
-        </Box>
+            </motion.div>
+            <GraphView />
+        </>
     );
 }

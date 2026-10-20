@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 
 class PRRecordBase(BaseModel):
@@ -15,6 +15,15 @@ class PRRecordBase(BaseModel):
     escalation_level: int
     jira_id: Optional[str] = None
     jira_status: Optional[str] = None
+    url: Optional[str] = None
+    state: Optional[str] = None
+    waiting_on: Optional[str] = None
+    people: Optional[List[str]] = None
+    reason: Optional[str] = None
+    next_step: Optional[str] = None
+    confidence: Optional[float] = None
+    source: Optional[str] = None
+    last_notified_at: Optional[datetime] = None
 
 class PRRecordResponse(PRRecordBase):
     updated_at: datetime
@@ -34,6 +43,11 @@ class ExecutionLogResponse(BaseModel):
     status: str
     error_msg: Optional[str] = None
     timestamp: datetime
+    duration_ms: Optional[int] = None
+    prs_seen: Optional[int] = None
+    prs_cached: Optional[int] = None
+    llm_calls: Optional[int] = None
+    actions_taken: Optional[int] = None
 
     class Config:
         from_attributes = True

@@ -1,100 +1,150 @@
-import {
-    Box, VStack, HStack, Text, Icon, Separator, Flex,
-} from '@chakra-ui/react';
-import { NavLink, useLocation } from 'react-router-dom';
-import {
-    LayoutDashboard, GitPullRequest, Database,
-    ScrollText, Settings, Zap,
-} from 'lucide-react';
+import { useCallback } from 'react';
+import { NavLink, Link, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { LayoutGrid, GitPullRequest, Activity, FolderGit2, Workflow, PanelLeftClose, PanelLeftOpen, Sun, Moon, Radar, Plus, X } from 'lucide-react';
+import { LogoMark } from '../components/ui/Logo';
+import { useApp } from '../context/app-context';
+import { getLogs } from '../services/api';
+import { useResource, useNow } from '../lib/useResource';
+import { timeAgo } from '../lib/format';
 
-const NAV_ITEMS = [
-    { label: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { label: 'PR Explorer', path: '/prs', icon: GitPullRequest },
-    { label: 'Repositories', path: '/repos', icon: Database },
-    { label: 'Logs', path: '/logs', icon: ScrollText },
-];
-
-function NavItem({ icon: IconComp, label, path }) {
-    const location = useLocation();
-    const isActive = path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
+function NavItem({ item, collapsed, onNavigate }) {
+    const { pathname } = useLocation();
+    const active = item.path === '/' ? pathname === '/' : pathname.startsWith(item.path);
     return (
-        <Box
-            as={NavLink}
-            to={path}
-            w="100%"
-            display="flex"
-            alignItems="center"
-            gap={3}
-            px={4}
-            py={2.5}
-            borderRadius="10px"
-            color={isActive ? '#2B72E8' : '#64748B'}
-            bg={isActive ? '#EBF4FF' : 'transparent'}
-            borderLeftWidth="2px"
-            borderLeftStyle="solid"
-            borderLeftColor={isActive ? '#2B72E8' : 'transparent'}
-            _hover={{ bg: '#F8FAFC', color: '#1A202C' }}
-            transition="all 0.15s"
-            fontWeight={isActive ? '600' : '400'}
-            fontSize="sm"
-            textDecoration="none"
-        >
-            <Icon as={IconComp} boxSize={4} />
-            <Text>{label}</Text>
-        </Box>
+        <NavLink to={item.path} className="nav-item" data-active={active} title={collapsed ? item.label : undefined} onClick={onNavigate}>
+            {active && <motion.span layoutId="nav-pill" className="nav-pill" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />}
+            <item.icon size={18} strokeWidth={1.9} />
+            <span className="nav-text">{item.label}</span>
+            {item.count > 0 && <span className="nav-count tabular" data-tone={item.tone}>{item.count}</span>}
+        </NavLink>
     );
 }
 
-export default function Sidebar() {
+function RepoList({ onNavigate }) {
+    const { repos, repoId, setRepoId } = useApp();
     return (
-        <Box
-            w="220px"
-            minW="220px"
-            bg="white"
-            borderRightWidth="1px"
-            borderRightColor="#E2E8F0"
-            display="flex"
-            flexDir="column"
-            py={4}
-            h="100vh"
-            position="sticky"
-            top={0}
-        >
-            {/* Logo */}
-            <HStack px={4} mb={5} gap={3}>
-                <Flex w={9} h={9} borderRadius="10px" bg="#2B72E8"
-                    align="center" justify="center"
-                    boxShadow="0 4px 12px rgba(43,114,232,0.3)">
-                    <Icon as={Zap} boxSize={5} color="white" />
-                </Flex>
-                <Box>
-                    <Text fontWeight="800" fontSize="sm" color="#1A202C" lineHeight="1.2">PR Sentinel</Text>
-                    <Text fontSize="10px" color="#94A3B8" fontWeight="500">AI Agent v1.0</Text>
-                </Box>
-            </HStack>
+        <div className="sidebar-repos">
+            {repos.map((r) => {
+                const active = r.id === repoId;
+                return (
+                    <button key={r.id} type="button" className="repo-item" data-active={active}
+                        onClick={() => { setRepoId(active ? null : r.id); onNavigate(); }}
+                        title={active ? 'Show all repositories' : `Show only ${r.fullName}`}>
+                        <span className="repo-dot" data-on={r.active} />
+                        <span className="truncate mono" style={{ flex: 1 }}>{r.fullName}</span>
+                        {active ? <X size={13} className="muted" /> : <span className="faint tabular" style={{ fontSize: 11.5 }}>{r.active ? r.openPRs ?? 0 : 'paused'}</span>}
+                    </button>
+                );
+            })}
+            <Link to="/repos?add=1" className="repo-item repo-add" onClick={onNavigate}><Plus size={14} />Add repository</Link>
+        </div>
+    );
+}
 
-            <Separator borderColor="#E2E8F0" mb={3} />
+function StatusCard({ collapsed }) {
+    const { scan, runScan, dataVersion, repos } = useApp();
+    const now = useNow(30000);
+    const fetchLogs = useCallback(() => getLogs(), []);
+    const { data: logs = [] } = useResource(fetchLogs, [], dataVersion);
+    const last = logs.find((l) => l.decision === 'BATCH_RUN');
+    const watching = repos.filter((r) => r.active).length;
 
-            <VStack px={2} gap={0.5} flex={1} align="stretch">
-                {NAV_ITEMS.map((item) => <NavItem key={item.path} {...item} />)}
-            </VStack>
+    if (collapsed) {
+        return (
+            <button type="button" className="icon-btn status-mini" onClick={runScan} disabled={scan.running}
+                title={scan.running ? 'Scanning…' : `Scan now · last scan ${last ? timeAgo(last.timestamp, now) : 'never'}`}>
+                <Radar size={18} className={scan.running ? 'spin' : undefined} />
+            </button>
+        );
+    }
+    return (
+        <div className="status-card">
+            <div className="row" style={{ gap: 8 }}>
+                <span className="live-dot" data-tone={scan.running ? 'brand' : undefined} />
+                <span style={{ fontSize: 12.5, fontWeight: 600 }}>{scan.running ? 'Scanning…' : `Watching ${watching} ${watching === 1 ? 'repo' : 'repos'}`}</span>
+            </div>
+            <span className="muted" style={{ fontSize: 12 }}>
+                {last ? `Last scan ${timeAgo(last.timestamp, now)}${last.status !== 'success' ? ' · with errors' : ''}` : 'No scans yet'}
+            </span>
+            <button type="button" className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 4 }} onClick={runScan} disabled={scan.running}>
+                <Radar size={14} className={scan.running ? 'spin' : undefined} />{scan.running ? 'Scanning' : 'Scan now'}
+            </button>
+        </div>
+    );
+}
 
-            <Separator borderColor="#E2E8F0" my={3} />
+function ThemeSwitch({ collapsed }) {
+    const { theme, toggleTheme } = useApp();
+    if (collapsed) {
+        return (
+            <button type="button" className="icon-btn" onClick={toggleTheme} title="Toggle theme" style={{ alignSelf: 'center' }}>
+                {theme === 'dark' ? <Moon size={17} /> : <Sun size={17} />}
+            </button>
+        );
+    }
+    return (
+        <div className="theme-switch" role="radiogroup" aria-label="Theme">
+            {[['light', Sun, 'Light'], ['dark', Moon, 'Dark']].map(([value, Icon, label]) => (
+                <button key={value} type="button" role="radio" aria-checked={theme === value} data-active={theme === value}
+                    onClick={() => { if (theme !== value) toggleTheme(); }}>
+                    {theme === value && <motion.span layoutId="theme-pill" className="theme-pill" transition={{ type: 'spring', stiffness: 500, damping: 38 }} />}
+                    <Icon size={14} /><span>{label}</span>
+                </button>
+            ))}
+        </div>
+    );
+}
 
-            <VStack px={2} gap={0.5} align="stretch">
-                <NavItem icon={Settings} label="Settings" path="/settings" />
-                <HStack px={4} py={2} gap={3}>
-                    <Box w={7} h={7} borderRadius="full" bg="#2B72E8"
-                        display="flex" alignItems="center" justifyContent="center" flexShrink={0}>
-                        <Text fontSize="10px" fontWeight="700" color="white">KK</Text>
-                    </Box>
-                    <Box flex={1} overflow="hidden">
-                        <Text fontSize="xs" fontWeight="600" color="#1A202C" truncate>Kris Kumar</Text>
-                        <Text fontSize="10px" color="#94A3B8">Admin</Text>
-                    </Box>
-                    <Box w={2} h={2} borderRadius="full" bg="#48BB78" />
-                </HStack>
-            </VStack>
-        </Box>
+export default function Sidebar({ pendingCount = 0 }) {
+    const { collapsed, toggleCollapsed, setMobileNavOpen, repos } = useApp();
+    const close = () => setMobileNavOpen(false);
+    const openPRs = repos.reduce((sum, r) => sum + (r.active ? r.openPRs || 0 : 0), 0);
+
+    const monitor = [
+        { label: 'Overview', path: '/', icon: LayoutGrid, count: pendingCount, tone: 'danger' },
+        { label: 'Pull requests', path: '/prs', icon: GitPullRequest, count: openPRs },
+        { label: 'Activity', path: '/activity', icon: Activity },
+    ];
+    const setup = [
+        { label: 'Repositories', path: '/repos', icon: FolderGit2, count: repos.length },
+        { label: 'How it works', path: '/workflow', icon: Workflow },
+    ];
+
+    return (
+        <aside className="sidebar">
+            <div className="sidebar-head">
+                <Link to="/" className="brand" onClick={close}>
+                    <span className="brand-mark"><LogoMark /></span>
+                    <span className="brand-text">
+                        <span className="brand-name">PR Sentinel</span>
+                        <span className="brand-sub">Pull request intelligence</span>
+                    </span>
+                </Link>
+                <button type="button" className="icon-btn icon-btn-sm desktop-only collapse-btn" onClick={toggleCollapsed}
+                    aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+                    {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+                </button>
+                <button type="button" className="icon-btn icon-btn-sm mobile-only" onClick={close} aria-label="Close navigation"><X size={16} /></button>
+            </div>
+
+            <nav className="sidebar-scroll">
+                <div className="nav-label">Monitor</div>
+                {monitor.map((item) => <NavItem key={item.path} item={item} collapsed={collapsed} onNavigate={close} />)}
+                <div className="nav-label">Setup</div>
+                {setup.map((item) => <NavItem key={item.path} item={item} collapsed={collapsed} onNavigate={close} />)}
+                {!collapsed && repos.length > 0 && (
+                    <>
+                        <div className="nav-label">Watching</div>
+                        <RepoList onNavigate={close} />
+                    </>
+                )}
+            </nav>
+
+            <div className="sidebar-footer">
+                <StatusCard collapsed={collapsed} />
+                <ThemeSwitch collapsed={collapsed} />
+            </div>
+        </aside>
     );
 }
