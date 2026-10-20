@@ -2,9 +2,9 @@ import { Box, VStack, HStack, Text, Icon } from '@chakra-ui/react';
 import { CheckCircle, Send, AlertTriangle, GitMerge, Clock } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 
-const ICONS = { ASK_TO_MERGE: GitMerge, PING_REVIEWER: Send, ESCALATE: AlertTriangle, IGNORE: Clock };
-const COLORS = { ASK_TO_MERGE: '#065F46', PING_REVIEWER: '#92400E', ESCALATE: '#991B1B', IGNORE: '#64748B' };
-const BG = { ASK_TO_MERGE: '#D1FAE5', PING_REVIEWER: '#FEF3C7', ESCALATE: '#FEE2E2', IGNORE: '#F1F5F9' };
+const ICONS = { ASK_TO_MERGE: GitMerge, PING_REVIEWER: Send, PING_AUTHOR: Send, ESCALATE: AlertTriangle, IGNORE: Clock };
+const COLORS = { ASK_TO_MERGE: '#065F46', PING_REVIEWER: '#92400E', PING_AUTHOR: '#075985', ESCALATE: '#991B1B', IGNORE: '#64748B' };
+const BG = { ASK_TO_MERGE: '#D1FAE5', PING_REVIEWER: '#FEF3C7', PING_AUTHOR: '#E0F2FE', ESCALATE: '#FEE2E2', IGNORE: '#F1F5F9' };
 
 export default function Timeline({ events = [] }) {
     if (!events.length) {

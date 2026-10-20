@@ -9,6 +9,19 @@ import StatusBadge from '../components/StatusBadge';
 import Timeline from '../components/Timeline';
 import { getPRById, approveDecision, overrideDecision, getLogs } from '../services/api';
 
+const STATE_LABELS = {
+    DRAFT: 'Draft',
+    CI_FAILING: 'CI failing',
+    CI_PENDING: 'CI running',
+    MERGE_CONFLICT: 'Merge conflict',
+    NEEDS_FIRST_REVIEW: 'Needs a first review',
+    CHANGES_REQUESTED: 'Changes requested',
+    FEEDBACK_ADDRESSED: 'Feedback addressed',
+    READY_TO_MERGE: 'Ready to merge',
+    DISCUSSION_STALLED: 'Discussion stalled',
+    ABANDONED: 'Inactive',
+};
+
 export default function PRDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -102,6 +115,33 @@ export default function PRDetail() {
             <SimpleGrid columns={{ base: 1, lg: 3 }} gap={4}>
                 {/* Left */}
                 <Box gridColumn={{ lg: 'span 2' }}>
+                    {/* Assessment */}
+                    {pr.state && (
+                        <Box bg="white" borderWidth="1px" borderColor="#E2E8F0" borderRadius="12px" p={4}
+                            boxShadow="0 1px 4px rgba(0,0,0,0.04)" mb={4}>
+                            <Flex justify="space-between" align="center" mb={2}>
+                                <Text fontSize="sm" fontWeight="700" color="#1A202C">
+                                    {STATE_LABELS[pr.state] || pr.state}
+                                    <Text as="span" fontWeight="500" color="#64748B"> · waiting on {pr.waitingOn}</Text>
+                                </Text>
+                                {pr.url && (
+                                    <Box as="a" href={pr.url} target="_blank" rel="noreferrer" fontSize="xs"
+                                        color="#2B72E8" display="flex" alignItems="center" gap={1}>
+                                        GitHub <Icon as={ExternalLink} boxSize={3} />
+                                    </Box>
+                                )}
+                            </Flex>
+                            <Text fontSize="sm" color="#1A202C" mb={2}>{pr.reason}</Text>
+                            <Text fontSize="sm" color="#1A202C" mb={2}>
+                                <b>Next step:</b> {pr.people.length > 0 && `${pr.people.map((p) => `@${p}`).join(' ')} `}{pr.nextStep}
+                            </Text>
+                            <Text fontSize="xs" color="#94A3B8">
+                                {pr.source === 'llm' ? 'AI judgement' : pr.source === 'cache' ? 'Unchanged since last run' : 'Rule engine'}
+                                {pr.confidence != null && ` · confidence ${Math.round(pr.confidence * 100)}%`}
+                            </Text>
+                        </Box>
+                    )}
+
                     {/* Stats */}
                     <Card mb={4}>
                         <SimpleGrid columns={4} gap={4}>
@@ -180,6 +220,7 @@ export default function PRDetail() {
                                     }}>
                                     <option value="ASK_TO_MERGE">Ask to Merge</option>
                                     <option value="PING_REVIEWER">Ping Reviewer</option>
+                                    <option value="PING_AUTHOR">Ping Author</option>
                                     <option value="ESCALATE">Escalate</option>
                                     <option value="IGNORE">Ignore</option>
                                 </select>

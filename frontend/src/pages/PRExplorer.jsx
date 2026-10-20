@@ -6,7 +6,7 @@ import StatusBadge from '../components/StatusBadge';
 import { usePRs } from '../hooks/usePRs';
 import { getRepos } from '../services/api';
 
-const DECISIONS = ['ASK_TO_MERGE', 'PING_REVIEWER', 'ESCALATE', 'IGNORE'];
+const DECISIONS = ['ASK_TO_MERGE', 'PING_REVIEWER', 'PING_AUTHOR', 'ESCALATE', 'IGNORE'];
 
 export default function PRExplorer() {
     const [repoId, setRepoId] = useState('');

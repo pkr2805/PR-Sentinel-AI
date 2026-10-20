@@ -6,6 +6,8 @@ from core.config import settings
 def get_chat_model() -> BaseChatModel:
     """Returns the configured chat model. Add new providers here."""
     if settings.llm_provider == "groq":
+        if not settings.groq_api_key:
+            raise ValueError("GROQ_API_KEY is not set")
         from langchain_groq import ChatGroq
 
         return ChatGroq(

@@ -60,31 +60,30 @@ const AgentNode = memo(({ data }) => {
 const nodeTypes = { agentNode: AgentNode };
 
 const INITIAL_NODES = [
-    { id: 'trigger', type: 'agentNode', position: { x: 250, y: 0 }, data: { label: 'Scheduler Trigger', subtitle: 'APScheduler · per repo', type: 'trigger' } },
-    { id: 'fetch', type: 'agentNode', position: { x: 250, y: 100 }, data: { label: 'Fetch Open PRs', subtitle: 'GitHub API', type: 'fetch' } },
-    { id: 'jira', type: 'agentNode', position: { x: 250, y: 200 }, data: { label: 'Jira Status', subtitle: 'Correlate tickets', type: 'jira' } },
-    { id: 'llm', type: 'agentNode', position: { x: 250, y: 300 }, data: { label: 'LLM Decision', subtitle: 'Groq · gpt-oss-120b', type: 'llm' } },
-    { id: 'merge', type: 'agentNode', position: { x: 0, y: 430 }, data: { label: 'Ask to Merge', subtitle: 'Jira Done + stale', type: 'merge' } },
-    { id: 'ping', type: 'agentNode', position: { x: 160, y: 430 }, data: { label: 'Ping Reviewer', subtitle: 'Inactive PR', type: 'ping' } },
-    { id: 'escalate', type: 'agentNode', position: { x: 330, y: 430 }, data: { label: 'Escalate', subtitle: 'Threshold breached', type: 'escalate' } },
-    { id: 'ignore', type: 'agentNode', position: { x: 490, y: 430 }, data: { label: 'Ignore', subtitle: 'No action needed', type: 'ignore' } },
-    { id: 'slack', type: 'agentNode', position: { x: 250, y: 560 }, data: { label: 'Slack Notification', subtitle: 'Digest + escalation', type: 'slack' } },
-    { id: 'persist', type: 'agentNode', position: { x: 250, y: 660 }, data: { label: 'Persist to DB', subtitle: 'Audit log + state', type: 'persist' } },
+    { id: 'trigger', type: 'agentNode', position: { x: 250, y: 0 }, data: { label: 'Trigger', subtitle: 'Schedule · webhook · manual', type: 'trigger' } },
+    { id: 'fetch', type: 'agentNode', position: { x: 250, y: 100 }, data: { label: 'Fetch Open PRs', subtitle: 'One GraphQL query', type: 'fetch' } },
+    { id: 'filter', type: 'agentNode', position: { x: 250, y: 200 }, data: { label: 'Filter + Cache', subtitle: 'Skip bots · unchanged PRs', type: 'jira' } },
+    { id: 'rules', type: 'agentNode', position: { x: 80, y: 320 }, data: { label: 'Rule Classifier', subtitle: 'Certain states · parallel', type: 'merge' } },
+    { id: 'llm', type: 'agentNode', position: { x: 420, y: 320 }, data: { label: 'LLM Judge', subtitle: 'Groq · gpt-oss-120b + MCP', type: 'llm' } },
+    { id: 'plan', type: 'agentNode', position: { x: 250, y: 440 }, data: { label: 'Plan Actions', subtitle: 'Dedupe · reminders · quiet hours', type: 'ping' } },
+    { id: 'approval', type: 'agentNode', position: { x: 470, y: 550 }, data: { label: 'Approval Gate', subtitle: 'Escalations wait for a human', type: 'escalate' } },
+    { id: 'act', type: 'agentNode', position: { x: 250, y: 660 }, data: { label: 'Act', subtitle: 'PR comment · labels · Slack digest', type: 'slack' } },
+    { id: 'persist', type: 'agentNode', position: { x: 250, y: 760 }, data: { label: 'Save Memory', subtitle: 'State · notified · metrics', type: 'persist' } },
 ];
 
 const edgeStyle = { stroke: '#30363D', strokeWidth: 1.5 };
+const blue = { stroke: '#2b72e8', strokeWidth: 1.5 };
 const INITIAL_EDGES = [
-    { id: 'e1', source: 'trigger', target: 'fetch', animated: true, style: { stroke: '#2b72e8', strokeWidth: 1.5 } },
-    { id: 'e2', source: 'fetch', target: 'jira', animated: true, style: { stroke: '#2b72e8', strokeWidth: 1.5 } },
-    { id: 'e3', source: 'jira', target: 'llm', animated: true, style: { stroke: '#2b72e8', strokeWidth: 1.5 } },
-    { id: 'e4', source: 'llm', target: 'merge', style: { stroke: '#16a34a', strokeWidth: 1.5 } },
-    { id: 'e5', source: 'llm', target: 'ping', style: { stroke: '#ca8a04', strokeWidth: 1.5 } },
-    { id: 'e6', source: 'llm', target: 'escalate', style: { stroke: '#dc2626', strokeWidth: 1.5 } },
-    { id: 'e7', source: 'llm', target: 'ignore', style: edgeStyle },
-    { id: 'e8', source: 'merge', target: 'slack', style: edgeStyle },
-    { id: 'e9', source: 'ping', target: 'slack', style: edgeStyle },
-    { id: 'e10', source: 'escalate', target: 'slack', style: edgeStyle },
-    { id: 'e11', source: 'slack', target: 'persist', animated: true, style: { stroke: '#9333ea', strokeWidth: 1.5 } },
+    { id: 'e1', source: 'trigger', target: 'fetch', animated: true, style: blue },
+    { id: 'e2', source: 'fetch', target: 'filter', animated: true, style: blue },
+    { id: 'e3', source: 'filter', target: 'rules', animated: true, style: blue },
+    { id: 'e4', source: 'rules', target: 'llm', label: 'ambiguous', style: { stroke: '#60a5fa', strokeWidth: 1.5 } },
+    { id: 'e5', source: 'rules', target: 'plan', style: { stroke: '#16a34a', strokeWidth: 1.5 } },
+    { id: 'e6', source: 'llm', target: 'plan', style: { stroke: '#16a34a', strokeWidth: 1.5 } },
+    { id: 'e7', source: 'plan', target: 'approval', label: 'escalation', style: { stroke: '#dc2626', strokeWidth: 1.5 } },
+    { id: 'e8', source: 'plan', target: 'act', style: edgeStyle },
+    { id: 'e9', source: 'approval', target: 'act', style: edgeStyle },
+    { id: 'e10', source: 'act', target: 'persist', animated: true, style: { stroke: '#9333ea', strokeWidth: 1.5 } },
 ];
 
 export default function GraphView({ height = '600px' }) {

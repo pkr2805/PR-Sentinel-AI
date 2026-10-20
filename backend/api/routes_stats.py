@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 
 from db.database import get_db
-from db.models import PRRecord, Repository, ExecutionLog
+from db.models import PRRecord, Repository, ExecutionLog, PendingAction
 
 router = APIRouter(prefix="/api/stats", tags=["Stats"])
 
@@ -35,6 +35,11 @@ def get_dashboard_stats(repo_id: str = None, db: Session = Depends(get_db)):
     merge_ready = sum(1 for p in prs if p.decision == "ASK_TO_MERGE")
     avg_inactivity = round(sum(p.inactivity_days for p in prs) / total_prs, 1) if total_prs > 0 else 0
 
+    pending_query = select(func.count(PendingAction.id)).where(PendingAction.status == "pending")
+    if repo_id:
+        pending_query = pending_query.where(PendingAction.repo_id == repo_id)
+    batch_runs = [l for l in logs if l.decision == "BATCH_RUN"]
+
     return {
         "totalPRs": total_prs,
         "stalePRs": stale_prs,
@@ -43,5 +48,9 @@ def get_dashboard_stats(repo_id: str = None, db: Session = Depends(get_db)):
         "agentRunsToday": len(logs), # Note: in prod filter by today
         "slackSentToday": sum(1 for l in logs if l.slack_sent),
         "reposMonitored": monitored_repos,
-        "avgInactivity": avg_inactivity
+        "avgInactivity": avg_inactivity,
+        "waitingOnAuthor": sum(1 for p in prs if p.waiting_on == "author"),
+        "waitingOnReview": sum(1 for p in prs if p.waiting_on == "reviewer"),
+        "pendingApprovals": db.execute(pending_query).scalar() or 0,
+        "llmCalls": sum(l.llm_calls or 0 for l in batch_runs),
     }

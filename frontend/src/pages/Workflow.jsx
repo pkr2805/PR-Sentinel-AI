@@ -3,23 +3,22 @@ import { Info } from 'lucide-react';
 import GraphView from '../components/GraphView';
 
 const LEGEND = [
-    { label: 'Trigger', color: '#2b72e8' },
-    { label: 'GitHub/Jira', color: '#0ea5e9' },
-    { label: 'LLM Decision', color: '#60a5fa' },
-    { label: 'Merge', color: '#16a34a' },
-    { label: 'Ping', color: '#ca8a04' },
-    { label: 'Escalate', color: '#dc2626' },
-    { label: 'Ignore', color: '#4b5563' },
-    { label: 'Slack + DB', color: '#9333ea' },
+    { label: 'Trigger / fetch', color: '#2b72e8' },
+    { label: 'Filter + cache', color: '#0ea5e9' },
+    { label: 'Rules', color: '#16a34a' },
+    { label: 'LLM judge', color: '#60a5fa' },
+    { label: 'Plan', color: '#ca8a04' },
+    { label: 'Approval', color: '#dc2626' },
+    { label: 'Act + save', color: '#9333ea' },
 ];
 
 const NODE_DESCS = [
-    { node: 'fetch_prs_node', desc: 'Queries GitHub API for all open PRs. Extracts number, title, author, reviewers, labels, and inactivity since last commit or review.' },
-    { node: 'jira_status_node', desc: 'Extracts Jira ticket ID from PR branch name or description, then queries Jira API for current status.' },
-    { node: 'llm_decision_node', desc: 'Passes full PR context to LLM. Returns one of: ASK_TO_MERGE, PING_REVIEWER, ESCALATE, or IGNORE.' },
-    { node: 'escalation_node', desc: 'Checks reminder count against threshold. If breached, increases escalation_level and routes to manager channel.' },
-    { node: 'slack_node', desc: 'Sends structured Slack digest grouped by decision type, using repo-specific channel config.' },
-    { node: 'persistence_node', desc: 'Writes execution result, decision, escalation level, and Slack message ID to PostgreSQL for audit and dedup.' },
+    { node: 'trigger', desc: 'Runs every 6 hours, on demand, or when GitHub sends a webhook (review, CI result, push, comment).' },
+    { node: 'fetch_prs', desc: 'One GitHub GraphQL query fetches every open PR with its reviews, review threads, CI status, conflicts and requested reviewers.' },
+    { node: 'filter_prs', desc: 'Skips bot PRs, ignored labels and authors. PRs unchanged since the last run reuse their previous assessment.' },
+    { node: 'assess_pr (parallel)', desc: 'Rules decide the certain states (draft, CI failing, conflict, ready to merge…). Only ambiguous PRs go to the LLM judge (Groq gpt-oss-120b, with MCP tools).' },
+    { node: 'plan', desc: 'Compares with the last run: notifies only on a new state or after the reminder interval, respects quiet hours, holds escalations for approval.' },
+    { node: 'act', desc: 'The only step that changes anything: edits one PR comment, sets sentinel:* labels and sends one Slack digest grouped by person. Dry-run by default.' },
 ];
 
 export default function Workflow() {

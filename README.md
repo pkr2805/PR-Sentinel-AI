@@ -1,22 +1,50 @@
 # PR Sentinel AI
 
-An AI agent that watches your open pull requests, works out which ones are stuck, and decides what should
-happen next: ping a reviewer, ask to merge, escalate to Slack, or leave it alone.
+An AI agent that works out **why** each open pull request is stuck and **who** has to act next, then tells
+that person where they already work: one PR comment, a label, and a Slack digest grouped by person.
 
-- **Backend:** FastAPI + LangGraph agent, SQLite, a scheduler that scans every 6 hours.
-- **LLM:** [Groq](https://groq.com) running `openai/gpt-oss-120b` (configurable).
-- **Tools:** the agent uses GitHub, Jira and Slack through [MCP](https://modelcontextprotocol.io) servers.
-- **Frontend:** React + Vite dashboard to manage repos, review decisions and override them.
+- **Backend:** FastAPI + a LangGraph engine (`backend/sentinel/`), SQLite, a scheduler and GitHub webhooks.
+- **LLM:** [Groq](https://groq.com) running `openai/gpt-oss-120b`, used only for the PRs rules can't decide.
+- **Tools:** the LLM can dig deeper through GitHub, Jira and Slack [MCP](https://modelcontextprotocol.io) servers.
+- **Frontend:** React + Vite dashboard: PR states, the reason and next step, approvals, run history.
 
 See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the roadmap.
 
 ## How a run works
 
-1. Fetch the repository's open PRs from GitHub.
-2. Start the configured MCP servers once for the run (GitHub always; Jira and Slack when configured).
-3. For each PR, the LLM explores it with the tools (a bounded number of rounds), then returns one decision:
-   `IGNORE`, `PING_REVIEWER`, `ASK_TO_MERGE` or `ESCALATE` (escalations are posted to Slack).
-4. Decisions and run logs are stored in SQLite and shown in the dashboard, where you can override them.
+```
+trigger (every 6h · webhook · "Run" button)
+  → fetch open PRs          one GitHub GraphQL query for the whole batch
+  → filter                  skip bots, ignored labels/authors; unchanged PRs reuse last run's result
+  → assess each PR          in parallel (limit: SENTINEL_MAX_CONCURRENCY)
+       rules first          draft, CI failing, conflict, changes requested, ready to merge, …
+       LLM judge if unsure  "was the feedback addressed?", "whose turn is it?"
+  → plan actions            only on a new state or after the reminder interval; quiet hours;
+                            escalations wait for approval
+  → act                     edit one PR comment, set sentinel:* labels, send one Slack digest
+  → save                    state, who was notified, metrics (time, LLM calls, cache hits)
+```
+
+The LLM only **decides**: its MCP tools are filtered to read-only ones that never return code. All side
+effects happen in one tested step (`sentinel/actions.py`), and the
+default is **dry run**: everything is assessed and logged, nothing is posted until `SENTINEL_DRY_RUN=false`.
+
+### PR states
+
+| State | Meaning | Waiting on |
+|---|---|---|
+| `DRAFT` | Still a draft | author (never notified) |
+| `CI_FAILING` / `MERGE_CONFLICT` | Checks fail / branch conflicts | author |
+| `CHANGES_REQUESTED` | Changes requested, nothing pushed since | author |
+| `NEEDS_FIRST_REVIEW` | No review yet | reviewer |
+| `FEEDBACK_ADDRESSED` | Author pushed after review (LLM confirms) | reviewer |
+| `DISCUSSION_STALLED` | Open threads or comments without a verdict (LLM decides whose turn) | varies |
+| `CI_PENDING` | Approved, CI still running | nobody |
+| `READY_TO_MERGE` | Approved, green, no conflicts | maintainer |
+| `ABANDONED` | No activity for `SENTINEL_ABANDONED_AFTER_DAYS` | author |
+
+A PR that has waited on someone for `SENTINEL_ESCALATE_AFTER_DAYS` is escalated: its comment and a separate
+Slack escalation wait in the dashboard's **Waiting for your approval** panel.
 
 ## Quick start
 
@@ -57,6 +85,28 @@ All settings live in `backend/.env`; see [`backend/.env.example`](backend/.env.e
 | `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_BASE_URL` | no | Enables the Jira MCP server |
 | `SLACK_BOT_TOKEN`, `SLACK_TEAM_ID` | no | Enables the Slack MCP server |
 | `SLACK_WEBHOOK_URL` | no | Simple Slack fallback without a Slack app |
+| `GITHUB_WEBHOOK_SECRET` | no | Enables `POST /api/webhooks/github` |
+| `SENTINEL_DRY_RUN` | no | `true` by default: assess and log only |
+| `SENTINEL_*` | no | Thresholds, reminders, quiet hours, approvals, features; see `.env.example` |
+
+Without `GROQ_API_KEY` everything still works; ambiguous PRs keep the rule engine's answer with lower confidence.
+
+## Try it on a repository (CLI)
+
+No server or database needed. From `backend/`:
+
+```bash
+python -m sentinel scan owner/repo            # dry run: prints each PR's state, reason and next step
+python -m sentinel scan owner/repo --no-llm   # rules only
+python -m sentinel scan owner/repo --apply    # really comment, label and send the Slack digest
+```
+
+## Scan on GitHub events
+
+Set `GITHUB_WEBHOOK_SECRET`, then in the repository's **Settings → Webhooks** add
+`https://<your-server>/api/webhooks/github` with content type `application/json`, the same secret, and the
+events *Pull requests*, *Pull request reviews*, *Pull request review comments*, *Check suites* and
+*Issue comments*. A scan of that repository starts within seconds of each event.
 
 ## API
 
@@ -68,7 +118,10 @@ All settings live in `backend/.env`; see [`backend/.env.example`](backend/.env.e
 | `POST` | `/api/agent/run?repo_id=` | Run the agent now |
 | `GET` | `/api/prs`, `/api/prs/{id}` | PR decisions (`id` is `owner/repo#number`, URL-encoded) |
 | `POST` | `/api/prs/{id}/override` | Override a decision |
-| `GET` | `/api/logs`, `/api/stats` | Run history and dashboard numbers |
+| `GET` | `/api/actions?status=pending` | Actions waiting for approval |
+| `POST` | `/api/actions/{id}/approve`, `/api/actions/{id}/reject` | Approve (runs it) or reject an action |
+| `POST` | `/api/webhooks/github` | GitHub webhook (signed with `GITHUB_WEBHOOK_SECRET`) |
+| `GET` | `/api/logs`, `/api/stats` | Run history (with duration, LLM calls, cache hits) and dashboard numbers |
 
 ## Development
 
@@ -78,7 +131,7 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-Tests use a fake LLM and a temporary database, so they need no API keys or network access.
+Tests use a fake LLM, fake GitHub responses and a temporary database, so they need no API keys or network access.
 
-> Upgrading from an earlier version: PR ids changed to `owner/repo#number`. Delete `backend/sentinel.db`
-> so the tables are recreated.
+> Upgrading from an earlier version: the database tables changed. Delete `backend/sentinel.db` so they
+> are recreated.

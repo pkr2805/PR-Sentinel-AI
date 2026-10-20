@@ -58,6 +58,10 @@ const normalizePR = (pr) => ({
     repoName: pr.repo_id,
     inactivityDays: pr.inactivity_days,
     escalationLevel: pr.escalation_level,
+    waitingOn: pr.waiting_on,
+    nextStep: pr.next_step,
+    people: pr.people || [],
+    lastNotifiedAt: pr.last_notified_at,
 });
 
 export const getPRs = async (repoId = null) => {
@@ -90,4 +94,17 @@ export const getLogs = async (repoId = null, prId = null) => {
 
 export const getStats = async (repoId = null) => {
     return await api.get('/stats', { params: repoId ? { repo_id: repoId } : {} });
+};
+
+// ─── Approvals ────────────────────────────────────────────────────────────────
+export const getPendingActions = async (repoId = null) => {
+    return await api.get('/actions', { params: repoId ? { repo_id: repoId } : {} });
+};
+
+export const approvePendingAction = async (id) => {
+    return await api.post(`/actions/${id}/approve`);
+};
+
+export const rejectPendingAction = async (id) => {
+    return await api.post(`/actions/${id}/reject`);
 };

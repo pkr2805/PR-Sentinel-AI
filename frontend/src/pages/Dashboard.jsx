@@ -15,6 +15,7 @@ import { useState, useEffect } from 'react';
 import MetricCard from '../components/MetricCard';
 import PRCard from '../components/PRCard';
 import Timeline from '../components/Timeline';
+import PendingApprovals from '../components/PendingApprovals';
 import { useAgentStatus } from '../hooks/useAgentStatus';
 import { usePRs } from '../hooks/usePRs';
 import { getStats, getRepos } from '../services/api';
@@ -39,7 +40,7 @@ export default function Dashboard() {
         { label: 'Escalated', value: stats.escalated, icon: AlertTriangle, color: '#DC2626', bg: '#FEE2E2', change: '-1', positive: true },
         { label: 'Merge Ready', value: stats.mergeReady, icon: GitMerge, color: '#059669', bg: '#D1FAE5', change: '+2', positive: true },
         { label: 'Agent Runs', value: stats.agentRunsToday, icon: Zap, color: '#7C3AED', bg: '#EDE9FE', change: null, positive: true },
-        { label: 'Slack Sent', value: stats.slackSentToday, icon: Bell, color: '#0891B2', bg: '#CFFAFE', change: null, positive: true },
+        { label: 'Needs Approval', value: stats.pendingApprovals ?? 0, icon: Bell, color: '#0891B2', bg: '#CFFAFE', change: null, positive: true },
         { label: 'Repos', value: stats.reposMonitored, icon: Database, color: '#0D9488', bg: '#CCFBF1', change: null, positive: true },
         { label: 'Avg Inactivity', value: `${stats.avgInactivity}d`, icon: TrendingUp, color: '#D97706', bg: '#FEF3C7', change: '-0.8d', positive: true },
     ] : [];
@@ -134,6 +135,8 @@ export default function Dashboard() {
                     <Timeline events={agent.logs} />
                 </Box>
             </SimpleGrid>
+
+            <PendingApprovals onChange={() => getStats(repoId).then(setStats)} />
 
             {/* Stale PRs */}
             <Box>

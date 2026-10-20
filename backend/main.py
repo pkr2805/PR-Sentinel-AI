@@ -4,7 +4,7 @@ from core.logger import logger
 from core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 
-from api import routes_repos, routes_prs, routes_agent, routes_stats
+from api import routes_repos, routes_prs, routes_agent, routes_stats, routes_actions, routes_webhooks
 from scheduler.scheduler import start_scheduler, stop_scheduler
 
 from db.database import engine, Base
@@ -35,6 +35,8 @@ def create_app() -> FastAPI:
     app.include_router(routes_prs.router)
     app.include_router(routes_agent.router)
     app.include_router(routes_stats.router)
+    app.include_router(routes_actions.router)
+    app.include_router(routes_webhooks.router)
 
     @app.on_event("startup")
     async def startup_event():

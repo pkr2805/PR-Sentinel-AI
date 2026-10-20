@@ -3,6 +3,7 @@ import { Box } from '@chakra-ui/react';
 const CONFIG = {
     ASK_TO_MERGE: { label: 'Ask to Merge', bg: '#D1FAE5', color: '#065F46' },
     PING_REVIEWER: { label: 'Ping Reviewer', bg: '#FEF3C7', color: '#92400E' },
+    PING_AUTHOR: { label: 'Ping Author', bg: '#E0F2FE', color: '#075985' },
     ESCALATE: { label: 'Escalate', bg: '#FEE2E2', color: '#991B1B' },
     IGNORE: { label: 'Ignore', bg: '#F1F5F9', color: '#475569' },
     PENDING: { label: 'Pending', bg: '#EDE9FE', color: '#5B21B6' },
