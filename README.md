@@ -6,7 +6,7 @@ that person where they already work: one PR comment, a label, and a Slack digest
 - **Backend:** FastAPI + a LangGraph engine (`backend/sentinel/`), SQLite, a scheduler and GitHub webhooks.
 - **LLM:** [Groq](https://groq.com) running `openai/gpt-oss-120b`, used only for the PRs rules can't decide.
 - **Tools:** the LLM can dig deeper through GitHub, Jira and Slack [MCP](https://modelcontextprotocol.io) servers.
-- **Frontend:** React + Vite dashboard: PR states, the reason and next step, approvals, run history.
+- **Frontend:** React + Vite + Framer Motion dashboard: who acts next on every PR, approvals, run history, ⌘K search.
 
 See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the roadmap.
 
@@ -71,7 +71,9 @@ cp .env.example .env    # optional, defaults to http://localhost:8000/api
 npm run dev
 ```
 
-Open http://localhost:5173, add a repository under **Settings**, then run the agent.
+Open http://localhost:5173, add a repository under **Repositories**, then press **Run scan** on the overview.
+Press <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> anywhere to search pull requests, switch repositories or run actions.
+The dashboard has a dark and a light theme (switch in the sidebar) and follows your system's reduced-motion setting.
 
 ## Configuration
 

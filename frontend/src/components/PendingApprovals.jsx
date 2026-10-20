@@ -1,64 +1,93 @@
-import { Box, Flex, Text, HStack, VStack, Spinner } from '@chakra-ui/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Siren, Check, X, MessageSquare, Send } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { getPendingActions, approvePendingAction, rejectPendingAction } from '../services/api';
+import { useResource } from '../lib/useResource';
+import { useApp } from '../context/app-context';
+import { ToneIcon } from './ui/Chip';
 
-const KIND_LABELS = { pr_comment: 'PR comment', slack_digest: 'Slack escalation', label: 'Labels' };
+const KIND = {
+    pr_comment: { label: 'Escalation comment', icon: MessageSquare },
+    slack_digest: { label: 'Slack escalation', icon: Send },
+};
 
-export default function PendingApprovals({ onChange }) {
-    const [actions, setActions] = useState([]);
+function preview(text = '') {
+    return text.replace('<!-- pr-sentinel -->', '').replace(/<\/?sub>/g, '').replace(/\*\*/g, '').replace(/^#+.*$/gm, '').replace(/\n{2,}/g, '\n').trim();
+}
+
+export default function PendingApprovals() {
+    const { dataVersion, refresh, toast } = useApp();
+    const fetcher = useCallback(() => getPendingActions(), []);
+    const { data: actions = [] } = useResource(fetcher, [], dataVersion);
     const [busy, setBusy] = useState(null);
+    const [hidden, setHidden] = useState([]);
 
-    const load = useCallback(() => getPendingActions().then(setActions).catch(() => setActions([])), []);
-
-    useEffect(() => { load(); }, [load]);
-
-    const decide = async (id, approve) => {
-        setBusy(id);
+    const decide = async (action, approve) => {
+        setBusy(action.id);
         try {
-            await (approve ? approvePendingAction(id) : rejectPendingAction(id));
+            const res = await (approve ? approvePendingAction(action.id) : rejectPendingAction(action.id));
+            setHidden((h) => [...h, action.id]);
+            toast(approve ? 'Escalation sent' : 'Escalation dismissed', {
+                description: approve ? res.result : `${KIND[action.kind]?.label || action.kind} for ${action.pr_id || action.repo_id} won't be sent.`,
+                tone: approve ? 'ready' : 'neutral',
+            });
+            refresh();
+        } catch (err) {
+            toast('Could not update the action', { description: err.message, tone: 'danger' });
         } finally {
             setBusy(null);
-            await load();
-            onChange?.();
         }
     };
 
-    if (actions.length === 0) return null;
+    const visible = actions.filter((a) => !hidden.includes(a.id));
 
     return (
-        <Box bg="white" borderWidth="1px" borderColor="#FCA5A5" borderRadius="12px" p={4} mb={6}
-            boxShadow="0 1px 4px rgba(0,0,0,0.04)">
-            <Flex justify="space-between" align="center" mb={3}>
-                <Text fontWeight="700" color="#1A202C" fontSize="sm">Waiting for your approval</Text>
-                <Text fontSize="xs" color="#64748B">{actions.length} escalation action(s)</Text>
-            </Flex>
-            <VStack align="stretch" gap={3}>
-                {actions.map((a) => (
-                    <Box key={a.id} borderWidth="1px" borderColor="#E2E8F0" borderRadius="8px" p={3}>
-                        <Flex justify="space-between" align="center" mb={2} gap={3}>
-                            <Text fontSize="xs" color="#64748B" fontFamily="mono">
-                                {KIND_LABELS[a.kind] || a.kind} · {a.pr_id || a.repo_id}
-                            </Text>
-                            <HStack gap={2}>
-                                {busy === a.id ? <Spinner size="xs" /> : (
-                                    <>
-                                        <Box as="button" px={3} py={1} borderRadius="6px" fontSize="xs" fontWeight="600"
-                                            bg="#D1FAE5" color="#065F46" style={{ border: 'none', cursor: 'pointer' }}
-                                            onClick={() => decide(a.id, true)}>Approve</Box>
-                                        <Box as="button" px={3} py={1} borderRadius="6px" fontSize="xs" fontWeight="600"
-                                            bg="#F1F5F9" color="#475569" style={{ border: '1px solid #E2E8F0', cursor: 'pointer' }}
-                                            onClick={() => decide(a.id, false)}>Reject</Box>
-                                    </>
-                                )}
-                            </HStack>
-                        </Flex>
-                        <Text fontSize="xs" color="#1A202C" whiteSpace="pre-wrap" fontFamily="mono"
-                            maxH="120px" overflowY="auto">
-                            {(a.summary || '').replace('<!-- pr-sentinel -->\n', '')}
-                        </Text>
-                    </Box>
-                ))}
-            </VStack>
-        </Box>
+        <AnimatePresence>
+            {visible.length > 0 && (
+                <motion.section className="card" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, height: 0, marginTop: 0 }} style={{ borderColor: 'var(--t-danger-line)', overflow: 'hidden', marginTop: 16 }}>
+                    <div className="card-header" data-tone="danger">
+                        <ToneIcon tone="danger" icon={Siren} />
+                        <div className="col" style={{ flex: 1 }}>
+                            <div className="card-title">Waiting for your approval</div>
+                            <div className="card-sub">These PRs have waited too long. Nothing is sent until you approve.</div>
+                        </div>
+                        <span className="chip" data-tone="danger">{visible.length}</span>
+                    </div>
+                    <div className="col">
+                        <AnimatePresence initial={false}>
+                            {visible.map((a) => {
+                                const kind = KIND[a.kind] || { label: a.kind, icon: MessageSquare };
+                                return (
+                                    <motion.div key={a.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0, x: 30, height: 0, paddingTop: 0, paddingBottom: 0 }}
+                                        className="row wrap" style={{ gap: 14, padding: '14px 20px', borderTop: '1px solid var(--border)', alignItems: 'flex-start' }}>
+                                        <span className="muted" style={{ marginTop: 2 }}><kind.icon size={16} /></span>
+                                        <div className="col" style={{ flex: '1 1 240px', gap: 4 }}>
+                                            <div className="row wrap" style={{ gap: 8 }}>
+                                                <span style={{ fontWeight: 550 }}>{kind.label}</span>
+                                                {a.pr_id ? (
+                                                    <Link to={`/prs/${encodeURIComponent(a.pr_id)}`} className="mono" style={{ fontSize: 12.5, color: 'var(--brand-strong)' }}>{a.pr_id}</Link>
+                                                ) : <span className="mono muted" style={{ fontSize: 12.5 }}>{a.repo_id}</span>}
+                                            </div>
+                                            <div className="muted" style={{ fontSize: 13, whiteSpace: 'pre-line', maxHeight: 88, overflow: 'hidden' }}>{preview(a.summary)}</div>
+                                        </div>
+                                        <div className="row" style={{ gap: 6 }}>
+                                            <button type="button" className="btn btn-sm btn-success" disabled={busy === a.id} onClick={() => decide(a, true)}>
+                                                <Check size={14} />Approve
+                                            </button>
+                                            <button type="button" className="btn btn-sm btn-ghost" disabled={busy === a.id} onClick={() => decide(a, false)}>
+                                                <X size={14} />Dismiss
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+                        </AnimatePresence>
+                    </div>
+                </motion.section>
+            )}
+        </AnimatePresence>
     );
 }

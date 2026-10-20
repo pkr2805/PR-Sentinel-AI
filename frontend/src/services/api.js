@@ -40,8 +40,16 @@ export const createRepo = async (data) => {
     };
 };
 
+const normalizeRepo = (repo) => ({
+    ...repo,
+    fullName: `${repo.owner}/${repo.name}`,
+    jiraProjectKey: repo.jira_project_key,
+    slackChannel: repo.slack_channel,
+    openPRs: repo.open_prs,
+});
+
 export const updateRepo = async (id, data) => {
-    return await api.put(`/repos/${id}`, data);
+    return normalizeRepo(await api.put(`/repos/${id}`, data));
 };
 
 export const deleteRepo = async (id) => {

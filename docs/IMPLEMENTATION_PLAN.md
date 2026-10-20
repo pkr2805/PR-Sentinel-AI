@@ -58,8 +58,7 @@ evidence links.
 - [x] Add the missing `PUT /api/repos/{id}` endpoint the frontend calls.
 - [x] `.env.example`, a real README, tests that run without network access.
 - [x] CI workflow: backend tests, frontend build (lint runs but is non-blocking).
-- [ ] Fix the 21 pre-existing frontend lint errors (`react-hooks/static-components`, `set-state-in-effect`),
-      then make lint blocking in CI.
+- [x] Fix the 21 pre-existing frontend lint errors and make lint blocking in CI (done with the UI redesign).
 - [ ] Verify a live run against Groq and a real repository.
 
 **Done when:** a fresh clone starts with the README steps alone and CI is green.
@@ -101,7 +100,9 @@ evidence links.
 
 - [ ] Move to FastAPI lifespan handlers and Alembic migrations instead of `create_all`.
 
-- [ ] Replace the mock activity chart with real data (time waiting per state).
+- [x] UI redesign: design tokens (dark + light), real data only (mock chart removed), "who acts next" breakdown,
+      command palette (⌘K), global repo filter, approvals panel, animations with reduced-motion support.
+- [ ] Trend charts over time (needs a history of states per run).
 - [ ] "Who's the bottleneck" view.
 - [ ] PR detail shows the evidence behind each decision.
 - [ ] Manual overrides feed the accuracy set.

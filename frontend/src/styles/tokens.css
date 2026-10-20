@@ -1,0 +1,111 @@
+/* PR Sentinel design tokens. Dark is the default; light is set with <html data-theme="light">. */
+
+:root {
+  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --sidebar-w: 248px;
+  --sidebar-w-collapsed: 72px;
+  --topbar-h: 60px;
+
+  color-scheme: dark;
+
+  /* Surfaces */
+  --bg: #07090d;
+  --bg-elev: #0a0d13;
+  --surface: #0f131b;
+  --surface-2: #151a24;
+  --surface-3: #1c2230;
+  --overlay: rgba(3, 5, 9, 0.72);
+  --border: rgba(148, 163, 184, 0.11);
+  --border-strong: rgba(148, 163, 184, 0.2);
+
+  /* Text */
+  --text: #e9edf5;
+  --text-2: #b0b9ca;
+  --muted: #7d879a;
+  --faint: #545e70;
+
+  /* Brand: iris → sky → teal, the "sentinel signal" */
+  --brand: #8b7bff;
+  --brand-strong: #a597ff;
+  --brand-2: #2dd4bf;
+  --brand-soft: rgba(139, 123, 255, 0.14);
+  --brand-grad: linear-gradient(135deg, #8b7bff 0%, #5ea6ff 55%, #2dd4bf 100%);
+  --brand-glow: 0 8px 28px -6px rgba(139, 123, 255, 0.55);
+  --on-brand: #ffffff;
+
+  /* Tones: who a PR is waiting on, and how urgent it is */
+  --t-author: #f6b94a;   --t-author-soft: rgba(246, 185, 74, 0.12);   --t-author-line: rgba(246, 185, 74, 0.3);
+  --t-review: #93a6ff;   --t-review-soft: rgba(147, 166, 255, 0.13);  --t-review-line: rgba(147, 166, 255, 0.32);
+  --t-ready: #3ddc97;    --t-ready-soft: rgba(61, 220, 151, 0.12);    --t-ready-line: rgba(61, 220, 151, 0.3);
+  --t-danger: #ff6b7d;   --t-danger-soft: rgba(255, 107, 125, 0.12);  --t-danger-line: rgba(255, 107, 125, 0.32);
+  --t-info: #2dd4bf;     --t-info-soft: rgba(45, 212, 191, 0.12);     --t-info-line: rgba(45, 212, 191, 0.3);
+  --t-neutral: #8f99ab;  --t-neutral-soft: rgba(143, 153, 171, 0.12); --t-neutral-line: rgba(143, 153, 171, 0.26);
+  --t-brand: var(--brand-strong); --t-brand-soft: var(--brand-soft); --t-brand-line: rgba(139, 123, 255, 0.35);
+
+  /* Depth */
+  --shadow-1: 0 1px 0 0 rgba(255, 255, 255, 0.035) inset, 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset, 0 10px 30px -12px rgba(0, 0, 0, 0.7);
+  --shadow-pop: 0 24px 60px -16px rgba(0, 0, 0, 0.75), 0 0 0 1px var(--border-strong);
+  --ring: 0 0 0 3px rgba(139, 123, 255, 0.38);
+
+  --bg-glow: radial-gradient(1100px 520px at 18% -12%, rgba(139, 123, 255, 0.13), transparent 62%),
+             radial-gradient(900px 480px at 100% 0%, rgba(45, 212, 191, 0.07), transparent 60%);
+  --grid-line: rgba(148, 163, 184, 0.045);
+  --skeleton-a: rgba(148, 163, 184, 0.07);
+  --skeleton-b: rgba(148, 163, 184, 0.14);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #f4f5f9;
+  --bg-elev: #fafbfd;
+  --surface: #ffffff;
+  --surface-2: #f3f4f8;
+  --surface-3: #e9ebf2;
+  --overlay: rgba(15, 18, 30, 0.38);
+  --border: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.15);
+
+  --text: #0c1120;
+  --text-2: #374052;
+  --muted: #5f697d;
+  --faint: #98a1b3;
+
+  --brand: #6a5af5;
+  --brand-strong: #5a49ec;
+  --brand-2: #0ea896;
+  --brand-soft: rgba(106, 90, 245, 0.1);
+  --brand-grad: linear-gradient(135deg, #6a5af5 0%, #3f8cf2 55%, #0ea896 100%);
+  --brand-glow: 0 8px 24px -8px rgba(106, 90, 245, 0.55);
+
+  --t-author: #b26b00;   --t-author-soft: rgba(230, 150, 20, 0.12);   --t-author-line: rgba(200, 130, 10, 0.3);
+  --t-review: #4553d9;   --t-review-soft: rgba(79, 99, 232, 0.1);     --t-review-line: rgba(79, 99, 232, 0.28);
+  --t-ready: #0b8a55;    --t-ready-soft: rgba(16, 157, 99, 0.1);      --t-ready-line: rgba(16, 157, 99, 0.28);
+  --t-danger: #d23650;   --t-danger-soft: rgba(224, 69, 90, 0.1);     --t-danger-line: rgba(224, 69, 90, 0.28);
+  --t-info: #0b8f80;     --t-info-soft: rgba(14, 168, 150, 0.1);      --t-info-line: rgba(14, 168, 150, 0.28);
+  --t-neutral: #5b6679;  --t-neutral-soft: rgba(95, 107, 128, 0.1);   --t-neutral-line: rgba(95, 107, 128, 0.24);
+  --t-brand-line: rgba(106, 90, 245, 0.3);
+
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.06), 0 0 0 1px rgba(15, 23, 42, 0.02);
+  --shadow-2: 0 12px 32px -14px rgba(15, 23, 42, 0.22), 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-pop: 0 24px 60px -18px rgba(15, 23, 42, 0.32), 0 0 0 1px var(--border);
+  --ring: 0 0 0 3px rgba(106, 90, 245, 0.28);
+
+  --bg-glow: radial-gradient(1100px 520px at 18% -12%, rgba(106, 90, 245, 0.09), transparent 62%),
+             radial-gradient(900px 480px at 100% 0%, rgba(14, 168, 150, 0.06), transparent 60%);
+  --grid-line: rgba(15, 23, 42, 0.035);
+  --skeleton-a: rgba(15, 23, 42, 0.05);
+  --skeleton-b: rgba(15, 23, 42, 0.1);
+}
