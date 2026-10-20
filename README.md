@@ -48,7 +48,8 @@ Slack escalation wait in the dashboard's **Waiting for your approval** panel.
 
 ## Quick start
 
-Requirements: Python 3.11+, Node.js 20+ (also used by `npx` to run the MCP servers).
+Requirements: Python 3.11+, Node.js 20.19+ or 22+ (Vite needs it; Node is also used by `npx` to run the MCP servers).
+Check with `node -v`; older versions fail with `crypto.hash is not a function`.
 
 ### Backend
 
