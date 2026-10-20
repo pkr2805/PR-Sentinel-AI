@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     groq_api_key: Optional[str] = None  # without it, ambiguous PRs keep the rule engine's answer
 
     # Core Integrations (via MCP / REST)
-    github_token: str
+    github_token: str = ""  # needed to scan; the dashboard and demo data work without it
     jira_email: Optional[str] = None
     jira_api_token: Optional[str] = None
     jira_base_url: Optional[str] = None

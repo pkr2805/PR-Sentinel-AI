@@ -67,6 +67,8 @@ class LazyMCPTools:
 
 
 async def default_deps(repo: Repository, memory: dict, config: SentinelConfig, stack: AsyncExitStack) -> ScanDeps:
+    if not settings.github_token:
+        raise AgentExecutionError("GITHUB_TOKEN is not set. Add it to backend/.env and restart the backend.", step="setup")
     github = GitHubClient(settings.github_token)
     stack.push_async_callback(github.aclose)
 

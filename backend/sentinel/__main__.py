@@ -23,6 +23,9 @@ async def _scan(args) -> int:
     from sentinel.github import GitHubClient
     from sentinel.judge import LLMJudge
 
+    if not settings.github_token:
+        print("GITHUB_TOKEN is not set. Add it to backend/.env or the environment.", file=sys.stderr)
+        return 2
     use_llm = not args.no_llm and bool(settings.groq_api_key)
     config = SentinelConfig(dry_run=not args.apply, use_llm=use_llm, slack_channel=args.slack_channel,
                             stale_after_days=settings.sentinel_stale_after_days,

@@ -183,3 +183,11 @@ async def test_webhook_schedules_a_scan_for_monitored_repos(repo, client, monkey
     labeled = {"repository": {"full_name": "octocat/hello"}, "action": "labeled"}
     assert (await send("pull_request", labeled))["status"] == "ignored"
     assert scanned == ["octocat/hello"]
+
+
+async def test_scan_without_github_token_explains_what_to_do(repo, monkeypatch):
+    monkeypatch.setattr(settings, "github_token", "")
+    with SessionLocal() as db:
+        with pytest.raises(Exception) as err:
+            await AgentService(db).execute_repo_scan("octocat/hello")
+    assert "GITHUB_TOKEN is not set" in str(err.value)
