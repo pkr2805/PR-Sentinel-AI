@@ -75,6 +75,19 @@ Open http://localhost:5173, add a repository under **Repositories**, then press 
 Press <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> anywhere to search pull requests, switch repositories or run actions.
 The dashboard has a dark and a light theme (switch in the sidebar) and follows your system's reduced-motion setting.
 
+## Try it with demo data
+
+To explore the dashboard before connecting GitHub or Groq, load demo data (from `backend/`, before or while the
+server runs), then refresh the browser:
+
+```bash
+python -m scripts.seed_demo          # add demo repositories, PRs, scan history and an approval
+python -m scripts.seed_demo --reset  # wipe the local database and load it fresh
+```
+
+With demo data, `GITHUB_TOKEN` and `GROQ_API_KEY` can stay empty. Scans of the demo repositories fail because they
+don't exist on GitHub; remove them on the Repositories page when you add your own.
+
 ## Configuration
 
 All settings live in `backend/.env`; see [`backend/.env.example`](backend/.env.example).
