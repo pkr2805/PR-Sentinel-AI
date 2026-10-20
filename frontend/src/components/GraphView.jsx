@@ -63,7 +63,7 @@ const INITIAL_NODES = [
     { id: 'trigger', type: 'agentNode', position: { x: 250, y: 0 }, data: { label: 'Scheduler Trigger', subtitle: 'APScheduler · per repo', type: 'trigger' } },
     { id: 'fetch', type: 'agentNode', position: { x: 250, y: 100 }, data: { label: 'Fetch Open PRs', subtitle: 'GitHub API', type: 'fetch' } },
     { id: 'jira', type: 'agentNode', position: { x: 250, y: 200 }, data: { label: 'Jira Status', subtitle: 'Correlate tickets', type: 'jira' } },
-    { id: 'llm', type: 'agentNode', position: { x: 250, y: 300 }, data: { label: 'LLM Decision', subtitle: 'OpenAI · reasoning', type: 'llm' } },
+    { id: 'llm', type: 'agentNode', position: { x: 250, y: 300 }, data: { label: 'LLM Decision', subtitle: 'Groq · gpt-oss-120b', type: 'llm' } },
     { id: 'merge', type: 'agentNode', position: { x: 0, y: 430 }, data: { label: 'Ask to Merge', subtitle: 'Jira Done + stale', type: 'merge' } },
     { id: 'ping', type: 'agentNode', position: { x: 160, y: 430 }, data: { label: 'Ping Reviewer', subtitle: 'Inactive PR', type: 'ping' } },
     { id: 'escalate', type: 'agentNode', position: { x: 330, y: 430 }, data: { label: 'Escalate', subtitle: 'Threshold breached', type: 'escalate' } },

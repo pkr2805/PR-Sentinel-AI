@@ -7,6 +7,8 @@ from sqlalchemy import select
 
 from db.models import ExecutionLog, PRRecord, Repository
 from services.agent.graph import compile_agent_graph
+from services.agent.mcp_tools import MCPToolManager
+from core.llm import get_chat_model
 from core.logger import logger
 from core.exceptions import AgentExecutionError
 
@@ -61,12 +63,15 @@ class AgentService:
                 "errors": []
             }
 
-            # 2. Invoke Graph (Async)
-            # Checkpointer requires thread config
-            config = {"configurable": {"thread_id": run_id}}
-            
+            # 3. Invoke Graph (Async). MCP servers and the LLM are created once and shared by every PR in the run.
             logger.info("langgraph_invoke_start", run_id=run_id)
-            final_state = await self.graph.ainvoke(initial_state, config)
+            async with MCPToolManager() as mcp_manager:
+                config = {"configurable": {
+                    "thread_id": run_id,
+                    "llm": get_chat_model(),
+                    "tools": mcp_manager.get_tools(),
+                }}
+                final_state = await self.graph.ainvoke(initial_state, config)
             logger.info("langgraph_invoke_complete", run_id=run_id, prs_evaluated=final_state.get("prs_evaluated", 0))
 
             evaluated_prs_data = final_state.get("evaluated_prs", [])
@@ -79,9 +84,13 @@ class AgentService:
                     existing_pr.decision = pr_data["decision"]
                     existing_pr.escalation_level = pr_data["escalation_level"]
                     existing_pr.inactivity_days = pr_data["inactivity_days"]
+                    existing_pr.title = pr_data["title"]
+                    existing_pr.additions = pr_data["additions"]
+                    existing_pr.deletions = pr_data["deletions"]
                 else:
                     new_pr = PRRecord(
                         id=pr_data["id"],
+                        number=pr_data["number"],
                         repo_id=repo_id,
                         title=pr_data["title"],
                         author=pr_data["author"],
@@ -103,7 +112,7 @@ class AgentService:
                 )
                 self.db.add(pr_log)
 
-            # 3. Create Repo-wide Execution Log
+            # 4. Create Repo-wide Execution Log
             log = ExecutionLog(
                 id=run_id,
                 repo_id=repo_id,

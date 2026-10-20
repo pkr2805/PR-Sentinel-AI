@@ -16,7 +16,8 @@ class Repository(Base):
 class PRRecord(Base):
     __tablename__ = "pr_records"
 
-    id = Column(String, primary_key=True, index=True) # str(PR Number)
+    id = Column(String, primary_key=True, index=True) # "owner/repo#number", unique across repositories
+    number = Column(Integer, nullable=True)
     repo_id = Column(String, ForeignKey("repositories.id"), index=True)
     title = Column(String, nullable=False)
     author = Column(String, nullable=False)

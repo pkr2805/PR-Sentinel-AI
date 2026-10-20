@@ -53,12 +53,20 @@ export const toggleRepo = async (id, active) => {
 };
 
 // ─── PRs ──────────────────────────────────────────────────────────────────────
+const normalizePR = (pr) => ({
+    ...pr,
+    repoName: pr.repo_id,
+    inactivityDays: pr.inactivity_days,
+    escalationLevel: pr.escalation_level,
+});
+
 export const getPRs = async (repoId = null) => {
-    return await api.get('/prs', { params: repoId ? { repo_id: repoId } : {} });
+    const data = await api.get('/prs', { params: repoId ? { repo_id: repoId } : {} });
+    return data.map(normalizePR);
 };
 
 export const getPRById = async (prId) => {
-    return await api.get(`/prs/${prId}`);
+    return normalizePR(await api.get(`/prs/${encodeURIComponent(prId)}`));
 };
 
 // ─── Agent ────────────────────────────────────────────────────────────────────
@@ -67,16 +75,17 @@ export const triggerAgent = async (repoId = null) => {
 };
 
 export const approveDecision = async (prId, action) => {
-    return await api.post(`/prs/${prId}/override`, { decision: action });
+    return await api.post(`/prs/${encodeURIComponent(prId)}/override`, { decision: action });
 };
 
 export const overrideDecision = async (prId, decision) => {
-    return await api.post(`/prs/${prId}/override`, { decision: decision });
+    return await api.post(`/prs/${encodeURIComponent(prId)}/override`, { decision: decision });
 };
 
 // ─── Logs & Stats ─────────────────────────────────────────────────────────────
 export const getLogs = async (repoId = null, prId = null) => {
-    return await api.get('/logs', { params: { repo_id: repoId, pr_id: prId } });
+    const data = await api.get('/logs', { params: { repo_id: repoId, pr_id: prId } });
+    return data.map((log) => ({ ...log, prId: log.pr_id, repoId: log.repo_id, slackSent: log.slack_sent }));
 };
 
 export const getStats = async (repoId = null) => {

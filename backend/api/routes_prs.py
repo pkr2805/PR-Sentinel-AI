@@ -13,12 +13,12 @@ def list_prs(repo_id: str = None, db: Session = Depends(get_db)):
     service = PRService(db)
     return service.get_prs(repo_id=repo_id)
 
-@router.get("/prs/{pr_id}", response_model=PRRecordResponse)
+@router.get("/prs/{pr_id:path}", response_model=PRRecordResponse)
 def get_pr(pr_id: str, db: Session = Depends(get_db)):
     service = PRService(db)
     return service.get_pr_by_id(pr_id)
 
-@router.post("/prs/{pr_id}/override", response_model=PRRecordResponse)
+@router.post("/prs/{pr_id:path}/override", response_model=PRRecordResponse)
 def override_pr_decision(pr_id: str, payload: PRDecisionOverride, db: Session = Depends(get_db)):
     service = PRService(db)
     return service.override_decision(pr_id, payload.decision)

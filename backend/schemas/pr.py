@@ -4,6 +4,7 @@ from datetime import datetime
 
 class PRRecordBase(BaseModel):
     id: str
+    number: Optional[int] = None
     repo_id: str
     title: str
     author: str
