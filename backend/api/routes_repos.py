@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from db.database import get_db
 from db.models import Repository
-from schemas.repo import RepoResponse, RepoCreate
+from schemas.repo import RepoResponse, RepoCreate, RepoUpdate
 
 router = APIRouter(prefix="/api/repos", tags=["Repositories"])
 
@@ -30,8 +30,11 @@ def list_repos(db: Session = Depends(get_db)):
 
 @router.post("", response_model=RepoResponse)
 def create_repo(repo: RepoCreate, db: Session = Depends(get_db)):
+    repo_id = f"{repo.owner}/{repo.name}"
+    if db.get(Repository, repo_id):
+        raise HTTPException(status_code=409, detail="Repo already exists")
     db_repo = Repository(
-        id=f"{repo.owner}/{repo.name}",
+        id=repo_id,
         owner=repo.owner,
         name=repo.name,
         jira_project_key=repo.jira_project_key,
@@ -41,6 +44,18 @@ def create_repo(repo: RepoCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_repo)
     return db_repo
+
+@router.put("/{repo_id:path}", response_model=RepoResponse)
+def update_repo(repo_id: str, payload: RepoUpdate, db: Session = Depends(get_db)):
+    repo = db.get(Repository, repo_id)
+    if not repo:
+        raise HTTPException(status_code=404, detail="Repo not found")
+
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(repo, field, value)
+    db.commit()
+    db.refresh(repo)
+    return repo
 
 @router.delete("/{repo_id:path}")
 def delete_repo(repo_id: str, db: Session = Depends(get_db)):

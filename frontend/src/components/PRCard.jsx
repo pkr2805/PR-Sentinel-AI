@@ -37,7 +37,7 @@ export default function PRCard({ pr, onRefresh }) {
             borderRadius="12px"
             p={4}
             cursor="pointer"
-            onClick={() => navigate(`/prs/${pr.id}`)}
+            onClick={() => navigate(`/prs/${encodeURIComponent(pr.id)}`)}
             transition="all 0.2s"
             boxShadow="0 1px 4px rgba(0,0,0,0.04)"
             _hover={{ borderColor: '#2B72E8', transform: 'translateY(-2px)', boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }}

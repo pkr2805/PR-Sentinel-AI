@@ -12,6 +12,11 @@ class RepoBase(BaseModel):
 class RepoCreate(RepoBase):
     pass
 
+class RepoUpdate(BaseModel):
+    jira_project_key: Optional[str] = None
+    slack_channel: Optional[str] = None
+    active: Optional[bool] = None
+
 class RepoResponse(RepoBase):
     id: str
     created_at: datetime

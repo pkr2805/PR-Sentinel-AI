@@ -1,6 +1,5 @@
 import os
-import asyncio
-from typing import List, Any
+from typing import Any, List, Optional
 from contextlib import AsyncExitStack
 
 from mcp import ClientSession, StdioServerParameters
@@ -8,138 +7,171 @@ from mcp.client.stdio import stdio_client
 from langchain_core.tools import StructuredTool
 from pydantic import create_model, Field
 
-async def load_mcp_tools(session: ClientSession) -> List[Any]:
-    """Manually parse raw MCP tools from the server and convert them into LangChain StructuredTools."""
-    mcp_tools = await session.list_tools()
-    lc_tools = []
-    
-    for t in mcp_tools.tools:
-        # 1. Convert the MCP JSON Schema properties into a dynamically generated Pydantic Model
-        props = t.inputSchema.get("properties", {})
-        fields = {}
-        for name, details in props.items():
-            # Simplistic mapping: default to str if type mapping is complex
-            fields[name] = (str, Field(..., description=details.get("description", "")))
-        
-        DynamicArgsSchema = create_model(f"{t.name}Schema", **fields)
-        
-        # 2. Create the async closure that executes the tool over the MCP session
-        async def mcp_executor(_tool_name=t.name, **kwargs):
-            result = await session.call_tool(_tool_name, arguments=kwargs)
-            return str(result.content)
-            
-        # 3. Bind it into a LangChain StructuredTool
-        lc_tool = StructuredTool.from_function(
-            func=None,
-            coroutine=mcp_executor,
-            name=t.name,
-            description=t.description or f"MCP tool: {t.name}",
-            args_schema=DynamicArgsSchema
-        )
-        lc_tools.append(lc_tool)
-        
-    return lc_tools
-
 from core.logger import logger
 from core.config import settings
 
-GITHUB_SERVER_PARAMS = StdioServerParameters(
-    command="npx",
-    args=["-y", "@modelcontextprotocol/server-github"],
-    env={"GITHUB_PERSONAL_ACCESS_TOKEN": settings.github_token or "", "PATH": os.environ.get("PATH", "")}
-)
+_JSON_TYPES = {
+    "string": str,
+    "integer": int,
+    "number": float,
+    "boolean": bool,
+    "object": dict,
+}
 
-SLACK_SERVER_PARAMS = StdioServerParameters(
-    command="npx",
-    args=["-y", "@modelcontextprotocol/server-slack"],
-    env={"SLACK_BOT_TOKEN": settings.slack_webhook or "", "PATH": os.environ.get("PATH", "")}
-)
 
-JIRA_SERVER_PARAMS = StdioServerParameters(
-    command="npx",
-    args=["-y", "mcp-jira-cloud"],
-    env={
-        "JIRA_API_TOKEN": settings.jira_api_token or "",
-        "JIRA_EMAIL": settings.jira_email or "",
-        "JIRA_BASE_URL": settings.jira_base_url or "",
-        "PATH": os.environ.get("PATH", "")
-    }
-)
+def json_schema_to_type(details: dict) -> Any:
+    """Maps a JSON-schema property to a Python type, so tools get numbers, booleans and lists, not just strings."""
+    json_type = details.get("type", "string")
+    nullable = False
+    if isinstance(json_type, list):
+        nullable = "null" in json_type
+        json_type = next((t for t in json_type if t != "null"), "string")
+
+    if json_type == "array":
+        item_type = json_schema_to_type(details.get("items", {}))
+        py_type = list[item_type]
+    else:
+        py_type = _JSON_TYPES.get(json_type, str)
+
+    return Optional[py_type] if nullable else py_type
+
+
+def build_args_schema(tool_name: str, input_schema: dict):
+    """Builds a Pydantic model from an MCP tool's input JSON schema."""
+    props = input_schema.get("properties", {})
+    required = set(input_schema.get("required", []))
+    fields = {}
+    for name, details in props.items():
+        py_type = json_schema_to_type(details)
+        description = details.get("description", "")
+        if name in required:
+            fields[name] = (py_type, Field(..., description=description))
+        else:
+            fields[name] = (Optional[py_type], Field(None, description=description))
+    return create_model(f"{tool_name}Schema", **fields)
+
+
+def _make_executor(session: ClientSession, tool_name: str):
+    async def mcp_executor(**kwargs):
+        arguments = {k: v for k, v in kwargs.items() if v is not None}
+        result = await session.call_tool(tool_name, arguments=arguments)
+        return str(result.content)
+    return mcp_executor
+
+
+async def load_mcp_tools(session: ClientSession) -> List[Any]:
+    """Converts the tools an MCP server exposes into LangChain StructuredTools."""
+    mcp_tools = await session.list_tools()
+    lc_tools = []
+
+    for t in mcp_tools.tools:
+        lc_tools.append(StructuredTool.from_function(
+            func=None,
+            coroutine=_make_executor(session, t.name),
+            name=t.name,
+            description=t.description or f"MCP tool: {t.name}",
+            args_schema=build_args_schema(t.name, t.inputSchema or {}),
+        ))
+
+    return lc_tools
+
+
+def _server_params(package: str, env: dict) -> StdioServerParameters:
+    return StdioServerParameters(
+        command="npx",
+        args=["-y", package],
+        env={**env, "PATH": os.environ.get("PATH", "")},
+    )
+
 
 class MCPToolManager:
-    """Manages the lifecycle of MCP server subprocesses and tool bridging."""
-    
+    """Manages the lifecycle of MCP server subprocesses and tool bridging.
+
+    Use as an async context manager so the servers are started once per agent run and always cleaned up.
+    """
+
     def __init__(self):
         self.stack = AsyncExitStack()
         self.sessions: List[ClientSession] = []
         self.langchain_tools: List[Any] = []
 
+    async def __aenter__(self):
+        await self.connect_to_servers()
+        return self
+
+    async def __aexit__(self, *exc):
+        await self.cleanup()
+
+    def _configured_servers(self) -> List[tuple[str, StdioServerParameters]]:
+        servers = []
+        if settings.github_token:
+            servers.append(("github", _server_params(
+                "@modelcontextprotocol/server-github",
+                {"GITHUB_PERSONAL_ACCESS_TOKEN": settings.github_token},
+            )))
+        if settings.slack_bot_token:
+            servers.append(("slack", _server_params(
+                "@modelcontextprotocol/server-slack",
+                {"SLACK_BOT_TOKEN": settings.slack_bot_token, "SLACK_TEAM_ID": settings.slack_team_id or ""},
+            )))
+        if settings.jira_api_token and settings.jira_base_url:
+            servers.append(("jira", _server_params(
+                "mcp-jira-cloud",
+                {
+                    "JIRA_API_TOKEN": settings.jira_api_token,
+                    "JIRA_EMAIL": settings.jira_email or "",
+                    "JIRA_BASE_URL": settings.jira_base_url,
+                },
+            )))
+        return servers
+
     async def connect_to_servers(self):
-        """Spawns the MCP server subprocesses via stdio and extracts their LangChain tools."""
-        try:
-            # 1. Connect to GitHub MCP
-            if settings.github_token and settings.github_token != "mock_token":
-                gh_read, gh_write = await self.stack.enter_async_context(stdio_client(GITHUB_SERVER_PARAMS))
-                gh_session = await self.stack.enter_async_context(ClientSession(gh_read, gh_write))
-                await gh_session.initialize()
-                self.sessions.append(gh_session)
-                
-                # Fetch tools natively and convert to LangChain tools
-                gh_tools = await load_mcp_tools(gh_session)
-                self.langchain_tools.extend(gh_tools)
-                logger.info("mcp_server_connected", server="github", tools_loaded=len(gh_tools))
+        """Spawns the configured MCP servers via stdio and loads their tools.
 
-            # 2. Connect to Slack MCP
-            if settings.slack_webhook and settings.slack_webhook != "mock_webhook":
-                sl_read, sl_write = await self.stack.enter_async_context(stdio_client(SLACK_SERVER_PARAMS))
-                sl_session = await self.stack.enter_async_context(ClientSession(sl_read, sl_write))
-                await sl_session.initialize()
-                self.sessions.append(sl_session)
-                
-                sl_tools = await load_mcp_tools(sl_session)
-                self.langchain_tools.extend(sl_tools)
-                logger.info("mcp_server_connected", server="slack", tools_loaded=len(sl_tools))
+        A server that fails to start is logged and skipped, so one broken integration doesn't stop the run.
+        """
+        for name, params in self._configured_servers():
+            try:
+                read, write = await self.stack.enter_async_context(stdio_client(params))
+                session = await self.stack.enter_async_context(ClientSession(read, write))
+                await session.initialize()
+                self.sessions.append(session)
 
-            # 3. Connect to Jira MCP
-            if settings.jira_api_token and settings.jira_base_url:
-                jr_read, jr_write = await self.stack.enter_async_context(stdio_client(JIRA_SERVER_PARAMS))
-                jr_session = await self.stack.enter_async_context(ClientSession(jr_read, jr_write))
-                await jr_session.initialize()
-                self.sessions.append(jr_session)
-                
-                jr_tools = await load_mcp_tools(jr_session)
-                self.langchain_tools.extend(jr_tools)
-                logger.info("mcp_server_connected", server="jira", tools_loaded=len(jr_tools))
+                tools = await load_mcp_tools(session)
+                self.langchain_tools.extend(tools)
+                logger.info("mcp_server_connected", server=name, tools_loaded=len(tools))
+            except Exception as e:
+                logger.error("mcp_connection_failed", server=name, error=str(e))
 
-        except Exception as e:
-            logger.error("mcp_connection_failed", error=str(e))
-            raise
-
-    async def get_tools(self) -> List[Any]:
-        """Returns the array of dynamically loaded LangChain tools."""
-        from langchain_core.tools import tool
-        import httpx
-        
+    def get_tools(self) -> List[Any]:
+        """Returns the MCP tools plus the Slack webhook fallback when it is configured."""
         tools = list(self.langchain_tools)
-        
-        # Native Webhook Fallback if no full Slack App is installed
         if settings.slack_webhook_url:
-            @tool
-            def slack_send_escalation(channel_id: str, text: str) -> str:
-                """Send an escalation message to a Slack channel."""
-                payload = {"text": f"*Channel Target: {channel_id}*\n\n{text}"}
-                try:
-                    res = httpx.post(settings.slack_webhook_url, json=payload)
-                    res.raise_for_status()
-                    return "Successfully sent escalation to Slack webhook."
-                except Exception as e:
-                    return f"Failed to send Slack message: {e}"
-                    
             tools.append(slack_send_escalation)
-            
         return tools
 
     async def cleanup(self):
         """Closes all active MCP server subprocesses cleanly."""
         await self.stack.aclose()
         logger.info("mcp_servers_disconnected")
+
+
+async def _send_slack_webhook(channel_id: str, text: str) -> str:
+    import httpx
+
+    payload = {"text": f"*Channel Target: {channel_id}*\n\n{text}"}
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            res = await client.post(settings.slack_webhook_url, json=payload)
+            res.raise_for_status()
+        return "Successfully sent escalation to Slack webhook."
+    except Exception as e:
+        return f"Failed to send Slack message: {e}"
+
+
+slack_send_escalation = StructuredTool.from_function(
+    func=None,
+    coroutine=_send_slack_webhook,
+    name="slack_send_escalation",
+    description="Send an escalation message to a Slack channel.",
+)
